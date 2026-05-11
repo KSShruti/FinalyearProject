@@ -1780,7 +1780,7 @@
         if (window.lastGruKey === key) return; 
         window.lastGruKey = key;
 
-        fetch('http://localhost:8000/gru-risk', {
+        fetch("https://una-lichenological-merlyn.ngrok-free.dev/gru-risk", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ HR: hr, RR: rr, SpO2: spo2 })
