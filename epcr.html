@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>e-PCR — Electronic Patient Care Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --border:      #d0d0d0;
+  --border-dark: #1a1a1a;
+  --bg:          #ffffff;
+  --bg-alt:      #f5f5f5;
+  --bg-header:   #eeeeee;
+  --text:        #111111;
+  --green:       #15803d;
+  --red:         #b91c1c;
+  --blue:        #1d4ed8;
+  --orange:      #d97706;
+  --yellow:      #ca8a04;
+  --mono:        'IBM Plex Mono', monospace;
+  --sans:        'IBM Plex Sans', sans-serif;
+  --news-green:  #15803d;
+  --news-yellow: #ca8a04;
+  --news-orange: #d97706;
+  --news-red:    #b91c1c;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  min-height: 100vh;
+}
+
+/* ── TOP BAR ── */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 20px;
+  border-bottom: 2.5px solid var(--border-dark);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.top-bar-title {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+.top-bar-right { display: flex; gap: 8px; align-items: center; }
+
+.btn {
+  padding: 6px 16px;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1.5px solid var(--border-dark);
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.15s;
+}
+.btn:hover { background: var(--bg-alt); }
+.btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+.btn-primary:hover { background: #1e40af; }
+
+/* ── MAIN LAYOUT ── */
+.epcr-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 20px 40px;
+}
+
+/* ── SECTION ── */
+.section {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.section-header {
+  background: var(--bg-header);
+  border-bottom: 1.5px solid var(--border-dark);
+  padding: 6px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.section-title {
+  font-weight: 800;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text);
+}
+.section-sub {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: #666;
+}
+.section-body { padding: 12px 14px; }
+
+/* ── FIELD GRID ── */
+.field-grid {
+  display: grid;
+  gap: 8px 16px;
+}
+.fg-2 { grid-template-columns: 1fr 1fr; }
+.fg-3 { grid-template-columns: 1fr 1fr 1fr; }
+.fg-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.fg-5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+
+.field { display: flex; flex-direction: column; gap: 2px; }
+.field-label {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #666;
+}
+.field-value {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1.5px solid var(--border-dark);
+  padding-bottom: 2px;
+  min-height: 22px;
+}
+.field-value.large {
+  font-size: 20px;
+  font-weight: 700;
+}
+.field-value.clr-green  { color: var(--news-green); border-color: var(--news-green); }
+.field-value.clr-yellow { color: var(--news-yellow); border-color: var(--news-yellow); }
+.field-value.clr-orange { color: var(--news-orange); border-color: var(--news-orange); }
+.field-value.clr-red    { color: var(--news-red); border-color: var(--news-red); }
+
+/* ── VITALS TABLE ── */
+.vitals-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+}
+.vitals-table th {
+  font-family: var(--sans);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #666;
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1.5px solid var(--border-dark);
+  background: var(--bg-alt);
+}
+.vitals-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  vertical-align: middle;
+}
+.vitals-table tr:last-child td { border-bottom: none; }
+.vitals-table td.vital-num {
+  font-size: 16px;
+  font-weight: 700;
+}
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 800;
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pill-green  { background: #f0fdf4; color: var(--news-green); border: 1px solid #bbf7d0; }
+.pill-yellow { background: #fefce8; color: var(--news-yellow); border: 1px solid #fde68a; }
+.pill-orange { background: #fff7ed; color: var(--news-orange); border: 1px solid #fed7aa; }
+.pill-red    { background: #fee2e2; color: var(--news-red);    border: 1px solid #fca5a5; }
+.pill-gray   { background: #f3f4f6; color: #555; border: 1px solid #e5e7eb; }
+
+/* ── CLINICAL PROFILE BADGE ── */
+.profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-weight: 800;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.profile-critical { background: #fee2e2; color: var(--red); border: 1.5px solid #fca5a5; }
+.profile-high     { background: #fff7ed; color: var(--orange); border: 1.5px solid #fed7aa; }
+.profile-moderate { background: #fefce8; color: var(--yellow); border: 1.5px solid #fde68a; }
+.profile-stable   { background: #f0fdf4; color: var(--green); border: 1.5px solid #bbf7d0; }
+
+/* ── GRU RISK ── */
+.gru-box {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-alt);
+  color: #555;
+  font-style: italic;
+}
+
+/* ── CONDITIONS ── */
+.conditions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.cond-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  font-family: var(--mono);
+}
+.cond-row.sev-normal   { background: #f0fdf4; border-color: #bbf7d0; color: var(--green); }
+.cond-row.sev-mild     { background: #fefce8; border-color: #fde68a; color: var(--yellow); }
+.cond-row.sev-moderate { background: #fff7ed; border-color: #fed7aa; color: var(--orange); }
+.cond-row.sev-critical { background: #fee2e2; border-color: #fca5a5; color: var(--red); }
+
+/* ── TIMELINE TABLE ── */
+.timeline-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.timeline-table th {
+  font-family: var(--sans);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #666;
+  text-align: right;
+  padding: 4px 8px;
+  border-bottom: 1.5px solid var(--border-dark);
+  background: var(--bg-alt);
+}
+.timeline-table th:first-child { text-align: left; }
+.timeline-table td {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  color: var(--text);
+}
+.timeline-table td:first-child { text-align: left; color: #666; font-size: 10px; }
+.timeline-table tr:hover td { background: #fafafa; }
+.timeline-table tr:last-child td { border-bottom: none; }
+.timeline-empty {
+  padding: 16px;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+  font-size: 12px;
+}
+
+/* ── CHECKLIST / INSTRUCTIONS ── */
+.instr-section-title {
+  font-weight: 800;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--blue);
+  display: block;
+  margin: 10px 0 4px;
+}
+.instr-section-title:first-child { margin-top: 0; }
+.checklist-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 4px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 11px;
+  line-height: 1.55;
+}
+.checklist-item:last-child { border-bottom: none; }
+.cb-box {
+  width: 13px; height: 13px;
+  border: 1.5px solid var(--border-dark);
+  border-radius: 2px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px;
+}
+.cb-box.done { background: #f0fdf4; border-color: var(--green); color: var(--green); }
+.ci-label { color: var(--text); }
+.ci-label.priority-critical { color: var(--red); font-weight: 600; }
+.ci-label.priority-high { color: var(--orange); }
+.ci-label.done-label { color: #aaa; text-decoration: line-through; }
+
+/* ── NOTES ── */
+.notes-block {
+  white-space: pre-wrap;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.65;
+  color: var(--text);
+  padding: 8px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  min-height: 60px;
+}
+
+/* ── TRIAGE ── */
+.triage-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 20px;
+}
+.triage-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 12px;
+}
+.triage-label { font-weight: 700; color: #555; }
+.triage-val { font-family: var(--mono); font-weight: 600; }
+
+/* ── ACUITY ── */
+.acuity-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.acuity-score-big {
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  border-bottom: 2px solid var(--border-dark);
+  padding-bottom: 2px;
+  line-height: 1;
+}
+.acuity-label-sm {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #666;
+}
+
+/* ── PRINT ── */
+@media print {
+  .top-bar { display: none; }
+  .epcr-wrap { padding-top: 0; }
+  body { font-size: 11px; }
+  .section { break-inside: avoid; }
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 14px;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  color: #555;
+  font-family: var(--mono);
+}
+.meta-row strong { color: var(--text); }
+
+.divider { height: 1px; background: var(--border); margin: 10px 0; }
+.status-ok { color: var(--green); font-weight: 700; }
+.status-warn { color: var(--orange); font-weight: 700; }
+
+#noDataBanner {
+  display: none;
+  margin: 30px auto;
+  max-width: 480px;
+  text-align: center;
+  padding: 30px;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  color: #888;
+}
+#noDataBanner h2 { font-size: 16px; margin-bottom: 8px; color: var(--text); }
+#noDataBanner p { font-size: 12px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="top-bar-title">e‑PCR &mdash; Electronic Patient Care Report</div>
+  <div class="top-bar-right">
+    <span id="genTime" style="font-size:11px;font-family:var(--mono);color:#666;"></span>
+    <button class="btn" onclick="loadData()">⟳ Refresh</button>
+    <button class="btn btn-primary" onclick="window.print()">⎙ Print / Export PDF</button>
+  </div>
+</div>
+
+<div id="noDataBanner">
+  <h2>No monitoring data found</h2>
+  <p>Open the Ambulatory Monitor, enter patient details, and begin a monitoring session. This report will populate automatically once data is available.</p>
+</div>
+
+<div class="epcr-wrap" id="epcrContent">
+
+  <!-- SECTION 1: PATIENT & MISSION INFO -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Section 1 — Patient &amp; Mission Information</span>
+      <span class="section-sub" id="s1-pid"></span>
+    </div>
+    <div class="meta-row">
+      <span>Ambulance ID: <strong id="m-ambId">—</strong></span>
+      <span>ETA: <strong id="m-eta">—</strong></span>
+      <span>Hospital: <strong id="m-hospital">—</strong></span>
+      <span>Generated: <strong id="m-genTime">—</strong></span>
+    </div>
+    <div class="section-body">
+      <div class="field-grid fg-4">
+        <div class="field">
+          <div class="field-label">Patient Name</div>
+          <div class="field-value" id="f-name">—</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Patient ID</div>
+          <div class="field-value" id="f-pid" style="font-family:var(--mono);">—</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Age</div>
+          <div class="field-value" id="f-age">—</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Sex</div>
+          <div class="field-value" id="f-sex">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: VITALS SNAPSHOT -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Section 2 — Vital Signs (Latest Reading)</span>
+      <span class="section-sub">NEWS2 colour-coded</span>
+    </div>
+    <div class="section-body" style="padding:0;">
+      <table class="vitals-table">
+        <thead>
+          <tr>
+            <th>Parameter</th>
+            <th>Value</th>
+            <th>Unit</th>
+            <th>Reference Range</th>
+            <th>NEWS2 Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Heart Rate (HR)</strong></td>
+            <td class="vital-num" id="vt-hr">—</td>
+            <td>bpm</td>
+            <td style="font-family:var(--mono);font-size:11px;">51–90</td>
+            <td id="vt-hr-pill">—</td>
+          </tr>
+          <tr>
+            <td><strong>Heart Rate Variability (HRV)</strong></td>
+            <td class="vital-num" id="vt-hrv">—</td>
+            <td>ms</td>
+            <td style="font-family:var(--mono);font-size:11px;">40–45</td>
+            <td id="vt-hrv-pill">—</td>
+          </tr>
+          <tr>
+            <td><strong>Respiratory Rate (RR)</strong></td>
+            <td class="vital-num" id="vt-rr">—</td>
+            <td>br/min</td>
+            <td style="font-family:var(--mono);font-size:11px;">12–20</td>
+            <td id="vt-rr-pill">—</td>
+          </tr>
+          <tr>
+            <td><strong>Oxygen Saturation (SpO₂)</strong></td>
+            <td class="vital-num" id="vt-spo2">—</td>
+            <td>%</td>
+            <td style="font-family:var(--mono);font-size:11px;">90–100</td>
+            <td id="vt-spo2-pill">—</td>
+          </tr>
+          <tr>
+            <td><strong>Temperature (Temp)</strong></td>
+            <td class="vital-num" id="vt-temp">—</td>
+            <td>°C</td>
+            <td style="font-family:var(--mono);font-size:11px;">36.1–38.0</td>
+            <td id="vt-temp-pill">—</td>
+          </tr>
+          <tr>
+            <td><strong>NIBP (Systolic)</strong></td>
+            <td class="vital-num" id="vt-nibp">—</td>
+            <td>mmHg</td>
+            <td style="font-family:var(--mono);font-size:11px;">100–130</td>
+            <td id="vt-nibp-pill">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION 3: VITALS TIMELINE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Section 3 — Vitals Timeline</span>
+      <span class="section-sub" id="s3-count">No entries</span>
+    </div>
+    <div class="section-body" style="padding:0;max-height:280px;overflow-y:auto;">
+      <div id="timelineContent">
+        <div class="timeline-empty">No timeline data recorded yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: CLINICAL ASSESSMENT -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Section 4 — Clinical Assessment</span>
+    </div>
+    <div class="section-body">
+      <div class="field-grid fg-2" style="margin-bottom:14px;">
+        <div>
+          <div class="field-label" style="margin-bottom:5px;">Acuity Index (XGBoost Model)</div>
+          <div class="acuity-row">
+            <div>
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#666;margin-bottom:3px;">Score</div>
+              <div class="acuity-score-big" id="ca-acuity">—</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="field-label" style="margin-bottom:5px;">Clinical Profile (Rule Engine)</div>
+          <div id="ca-profile-badge" style="margin-top:4px;">—</div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div style="margin-top:10px;">
+        <div class="field-label" style="margin-bottom:6px;">Criticality — GRU Model Output</div>
+        <div class="gru-box" id="ca-gru">Awaiting GRU model output...</div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="field-label" style="margin-bottom:6px;">Detected Conditions</div>
+        <div id="ca-conditions"><em style="color:#999;font-size:11px;">No conditions data available.</em></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 5: TRIAGE SYNC -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Section 5 — ER Triage Sync</span>
+    </div>
+    <div class="section-body">
+      <div class="triage-grid">
+        <div>
+          <div class="triage-row"><span class="triage-label">Paramedic ID</span><span class="triage-val" id="tr-paramedic">—</span></div>
+          <div class="triage-row"><span class="triage-label">Assigned Doctor</span><span class="triage-val" id="tr-doctor">—</span></div>
+          <div class="triage-row"><span class="triage-label">Assigned Nurse</span><span class="triage-val" id="tr-nurse">—</span></div>
+          <div class="triage-row"><span class="triage-label">Triage Status</span><span class="triage-val" id="tr-status">—</span></div>
+        </div>
+        <div>
+          <div class="triage-row"><span class="triage-label">Priority</span><span class="triage-val" id="tr-priority">—</span></div>
+          <div class="triage-row"><span class="triage-label">Ward / Bed</span><span class="triage-val" id="tr-ward">—</span></div>
+          <div class="triage-row"><span class="triage-label">Facility / Equipment</span><span class="triage-val" id="tr-facility">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 6: PRE-ARRIVAL ORDERS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Section 6 — Pre‑Arrival Actions &amp; Hospital Orders</span>
+      <span class="section-sub" id="s6-progress"></span>
+    </div>
+    <div class="section-body" id="s6-body">
+      <em style="color:#999;font-size:11px;">No instructions generated yet.</em>
+    </div>
+  </div>
+
+  <!-- SECTION 7: PARAMEDIC NOTES -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-title">Section 7 — Paramedic Notes &amp; Handover</span>
+    </div>
+    <div class="section-body">
+      <div class="notes-block" id="s7-notes">No notes recorded.</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div style="margin-top:20px;padding-top:12px;border-top:1.5px solid var(--border-dark);display:flex;justify-content:space-between;font-size:10px;color:#666;font-family:var(--mono);">
+    <span>Intelligent Real-Time Ambulatory Monitoring System</span>
+    <span id="footer-time"></span>
+    <span>CONFIDENTIAL — MEDICAL RECORD</span>
+  </div>
+
+</div><!-- /epcr-wrap -->
+
+<script>
+/* ════════════════════════════════════════════════════════
+   NEWS2 COLOUR HELPERS
+════════════════════════════════════════════════════════ */
+function newsHR(v)   { var n=parseFloat(v); if(isNaN(n))return null; if(n<=40)return'red'; if(n<=50)return'orange'; if(n<=90)return'green'; if(n<=110)return'yellow'; if(n<=130)return'orange'; return'red'; }
+function newsHRV(v)  { var n=parseFloat(v); if(isNaN(n))return null; if(n<20)return'red'; if(n<40)return'orange'; if(n<=45)return'green'; if(n<=60)return'yellow'; return'orange'; }
+function newsRR(v)   { var n=parseFloat(v); if(isNaN(n))return null; if(n<=8)return'red'; if(n<=11)return'yellow'; if(n<=20)return'green'; if(n<=24)return'yellow'; return'red'; }
+function newsSpo2(v) { var n=parseFloat(v); if(isNaN(n))return null; if(n<=91)return'red'; if(n<=93)return'orange'; if(n<=95)return'yellow'; return'green'; }
+function newsTemp(v) { var n=parseFloat(v); if(isNaN(n))return null; if(n<=35)return'red'; if(n<=36)return'yellow'; if(n<=38)return'green'; if(n<=39)return'yellow'; return'orange'; }
+function newsNIBP(v) { var n=parseFloat(v); if(isNaN(n))return null; if(n<=90)return'red'; if(n<=100)return'orange'; if(n<=110)return'yellow'; if(n<=219)return'green'; return'red'; }
+
+var PILL_LABELS = {
+  green:  { cls:'pill-green',  text:'NORMAL' },
+  yellow: { cls:'pill-yellow', text:'MILD ▲' },
+  orange: { cls:'pill-orange', text:'MODERATE ▲' },
+  red:    { cls:'pill-red',    text:'CRITICAL ▲' }
+};
+
+function makePill(color) {
+  if (!color) return '<span class="pill pill-gray">—</span>';
+  var p = PILL_LABELS[color];
+  return '<span class="pill ' + p.cls + '">' + p.text + '</span>';
+}
+
+function setEl(id, html, isHTML) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (isHTML) el.innerHTML = html; else el.textContent = html;
+}
+
+/* ════════════════════════════════════════════════════════
+   PROFILE COLOR CLASS
+════════════════════════════════════════════════════════ */
+function profileClass(profileText) {
+  if (!profileText) return '';
+  var t = profileText.toLowerCase();
+  if (t.includes('critical')) return 'profile-critical';
+  if (t.includes('high'))     return 'profile-high';
+  if (t.includes('moderate')) return 'profile-moderate';
+  if (t.includes('stable'))   return 'profile-stable';
+  return 'profile-stable';
+}
+
+/* ════════════════════════════════════════════════════════
+   PARSE INSTRUCTIONS HTML → structured list
+════════════════════════════════════════════════════════ */
+function renderInstructions(html) {
+  if (!html || html.trim() === '') return '<em style="color:#999;font-size:11px;">No instructions generated.</em>';
+  var tmp = document.createElement('div');
+  tmp.innerHTML = html;
+
+  var out = '';
+  var nodes = tmp.childNodes;
+  nodes.forEach(function(node) {
+    if (node.nodeType === 1) {
+      var tag = node.tagName.toLowerCase();
+      if (tag === 'span' && node.classList.contains('instr-section-title')) {
+        out += '<span class="instr-section-title">' + node.textContent + '</span>';
+      } else if (tag === 'div' && node.classList.contains('checklist-item')) {
+        var isDone   = node.classList.contains('checked');
+        var isPriC   = node.classList.contains('priority-critical');
+        var isPriH   = node.classList.contains('priority-high');
+        var cb = node.querySelector('input[type="checkbox"]');
+        var checked  = (cb && (cb.checked || cb.hasAttribute('checked'))) || isDone;
+        var lbl = node.querySelector('.checklist-label');
+        var text = lbl ? lbl.textContent : node.textContent;
+
+        var cbClass  = checked ? 'cb-box done' : 'cb-box';
+        var cbInner  = checked ? '✓' : '';
+        var lblClass = 'ci-label' + (isPriC ? ' priority-critical' : isPriH ? ' priority-high' : '') + (checked ? ' done-label' : '');
+
+        out += '<div class="checklist-item">'
+             + '<div class="' + cbClass + '">' + cbInner + '</div>'
+             + '<span class="' + lblClass + '">' + text + '</span>'
+             + '</div>';
+      }
+    }
+  });
+  return out || '<em style="color:#999;font-size:11px;">No instructions generated.</em>';
+}
+
+/* ════════════════════════════════════════════════════════
+   PARSE CONDITIONS HTML
+════════════════════════════════════════════════════════ */
+function renderConditions(html) {
+  if (!html || html.trim() === '') return '<em style="color:#999;font-size:11px;">No conditions data.</em>';
+  var tmp = document.createElement('div');
+  tmp.innerHTML = html;
+
+  var tags = tmp.querySelectorAll('.condition-tag');
+  if (!tags.length) return html;
+
+  var out = '<div class="conditions-list">';
+  tags.forEach(function(tag) {
+    var sevClass = 'sev-normal';
+    if (tag.classList.contains('sev-mild'))     sevClass = 'sev-mild';
+    if (tag.classList.contains('sev-moderate')) sevClass = 'sev-moderate';
+    if (tag.classList.contains('sev-critical')) sevClass = 'sev-critical';
+    out += '<div class="cond-row ' + sevClass + '">' + tag.textContent.trim() + '</div>';
+  });
+  out += '</div>';
+  return out;
+}
+
+/* ════════════════════════════════════════════════════════
+   TIMELINE TABLE
+════════════════════════════════════════════════════════ */
+function renderTimeline(timeline) {
+  var el = document.getElementById('timelineContent');
+  var countEl = document.getElementById('s3-count');
+
+  if (!timeline || !timeline.length) {
+    el.innerHTML = '<div class="timeline-empty">No timeline data recorded yet. Data is captured every 5 seconds during monitoring.</div>';
+    countEl.textContent = 'No entries';
+    return;
+  }
+
+  countEl.textContent = timeline.length + ' readings';
+
+  var html = '<table class="timeline-table"><thead><tr>'
+           + '<th>Time</th><th>HR (bpm)</th><th>HRV (ms)</th>'
+           + '<th>RR (br/min)</th><th>SpO₂ (%)</th><th>Temp (°C)</th><th>NIBP (mmHg)</th>'
+           + '</tr></thead><tbody>';
+
+  // Show last 60 entries max in display; all are in print
+  var show = timeline.slice(-60);
+  show.forEach(function(snap) {
+    var t = snap.t ? new Date(snap.t).toLocaleTimeString() : '—';
+    html += '<tr>'
+          + '<td>' + t + '</td>'
+          + '<td>' + (snap.HR  !== undefined ? snap.HR  : '—') + '</td>'
+          + '<td>' + (snap.HRV !== undefined ? snap.HRV : '—') + '</td>'
+          + '<td>' + (snap.RR  !== undefined ? snap.RR  : '—') + '</td>'
+          + '<td>' + (snap.SpO2 !== undefined ? snap.SpO2 : '—') + '</td>'
+          + '<td>' + (snap.Temp !== undefined ? snap.Temp : '—') + '</td>'
+          + '<td>' + (snap.NIBP !== undefined ? snap.NIBP : '—') + '</td>'
+          + '</tr>';
+  });
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+/* ════════════════════════════════════════════════════════
+   MAIN DATA LOADER
+════════════════════════════════════════════════════════ */
+function loadData() {
+  var now = new Date().toLocaleString();
+  setEl('genTime', now);
+  setEl('m-genTime', now);
+  setEl('footer-time', now);
+
+  var raw = null;
+  try { raw = localStorage.getItem('em_dash_sync'); } catch(e) {}
+
+  if (!raw) {
+    document.getElementById('noDataBanner').style.display = 'block';
+    document.getElementById('epcrContent').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('noDataBanner').style.display = 'none';
+  document.getElementById('epcrContent').style.display  = 'block';
+
+  var d = null;
+  try { d = JSON.parse(raw); } catch(e) { return; }
+
+  // ── Section 1: Patient & Mission
+  var pt = d.patient || {};
+  setEl('f-name',   pt.name || '—');
+  setEl('f-pid',    pt.id   || '—');
+  setEl('f-age',    pt.age  || '—');
+  setEl('f-sex',    pt.sex  || '—');
+  setEl('s1-pid',   pt.id   || '');
+  setEl('m-ambId',  d.ambId || '—');
+  setEl('m-eta',    d.eta   || '—');
+  setEl('m-hospital', d.hospitalName || '—');
+
+  // ── Section 2: Vitals
+  var v = d.vitals || {};
+  setEl('vt-hr',   v.hr   || '—');
+  setEl('vt-hrv',  v.hrv  || '—');
+  setEl('vt-rr',   v.rr   || '—');
+  setEl('vt-spo2', v.spo2 || '—');
+  setEl('vt-temp', v.temp || '—');
+  setEl('vt-nibp', v.nibp || '—');
+
+  setEl('vt-hr-pill',   makePill(newsHR(v.hr)),     true);
+  setEl('vt-hrv-pill',  makePill(newsHRV(v.hrv)),   true);
+  setEl('vt-rr-pill',   makePill(newsRR(v.rr)),     true);
+  setEl('vt-spo2-pill', makePill(newsSpo2(v.spo2)), true);
+  setEl('vt-temp-pill', makePill(newsTemp(v.temp)), true);
+  setEl('vt-nibp-pill', makePill(newsNIBP(v.nibp)), true);
+
+  // ── Section 3: Timeline
+  var timeline = (d.epcr && d.epcr.vitalsTimeline) ? d.epcr.vitalsTimeline : [];
+  if (!timeline.length) {
+    try {
+      var tRaw = localStorage.getItem('em_vitals_timeline');
+      if (tRaw) timeline = JSON.parse(tRaw);
+    } catch(e) {}
+  }
+  renderTimeline(timeline);
+
+  // ── Section 4: Clinical Assessment
+  var cl = d.clinical || {};
+  setEl('ca-acuity', cl.acuity || '—');
+  var gruText = (cl.gruRisk || '').trim();
+  setEl('ca-gru', gruText || 'No GRU output available. Ensure NIBP is entered and backend is running.');
+
+  var profText = (cl.profile || '').trim();
+  var profEl   = document.getElementById('ca-profile-badge');
+  if (profText && profText !== ' --') {
+    profEl.innerHTML = '<div class="profile-badge ' + profileClass(profText) + '">' + profText + '</div>';
+  } else {
+    profEl.innerHTML = '<span style="color:#999;font-style:italic;font-size:12px;">Awaiting profile analysis...</span>';
+  }
+
+  setEl('ca-conditions', renderConditions(cl.conditionsHTML || ''), true);
+
+  // ── Section 5: Triage
+  var tr = null;
+  try {
+    var trRaw = localStorage.getItem('em_triage_sync');
+    if (trRaw) tr = JSON.parse(trRaw);
+  } catch(e) {}
+  if (tr) {
+    setEl('tr-paramedic', tr.paramedic || '—');
+    setEl('tr-doctor',    tr.doctor    || '—');
+    setEl('tr-nurse',     tr.nurse     || '—');
+    setEl('tr-status',    tr.status    || '—');
+    setEl('tr-priority',  tr.priority  || '—');
+    setEl('tr-ward',      (tr.ward || '—') + ' / ' + (tr.bed || '—'));
+    setEl('tr-facility',  tr.facility  || '—');
+  }
+
+  // ── Section 6: Instructions
+  var col4 = d.col4 || {};
+  setEl('s6-body',     renderInstructions(col4.instructionsHTML || ''), true);
+  setEl('s6-progress', col4.progressText || '');
+
+  // ── Section 7: Notes
+  var notes = (col4.notes || '').trim();
+  setEl('s7-notes', notes || 'No notes recorded.');
+}
+
+/* ════════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════════ */
+loadData();
+// Auto-refresh every 5s to stay live
+setInterval(loadData, 5000);
+</script>
+</body>
+</html>

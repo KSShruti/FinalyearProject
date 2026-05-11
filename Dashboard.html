@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Operations Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --border: #000;
+            --bg: #ffffff;
+            --bg-alt: #f5f5f5;
+            --text: #000000;
+            --blue: #1d4ed8;
+            --green: #15803d;
+            --yellow: #ca8a04;
+            --orange: #d97706;
+            --red: #b91c1c;
+            --font-sans: 'IBM Plex Sans', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+            --news-green:  #15803d;
+            --news-yellow: #ca8a04;
+            --news-orange: #d97706;
+            --news-red:    #b91c1c;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: var(--font-sans); background: var(--bg); color: var(--text); overflow: hidden; }
+
+        .dashboard-wrapper { border: 6px solid var(--border); height: 100vh; display: flex; flex-direction: column; }
+
+        .top-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; border-bottom: 4px solid var(--border); font-weight: 700; }
+        .header-center { font-size: 20px; letter-spacing: 1px; text-transform: uppercase; font-weight: 800; }
+
+        .main-grid { display: grid; grid-template-columns: 1.1fr 1.6fr 1.2fr 1.1fr; flex: 1; min-height: 0; }
+        .col { border-right: 3px solid var(--border); display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+        .col:last-child { border-right: none; }
+
+        .col-header { text-align: center; font-weight: 700; padding: 6px; border-bottom: 2px solid var(--border); font-size: 15px; }
+        .content-box { padding: 8px; flex: 1; }
+
+        /* COLUMN 1 */
+        .inbound-stats { font-weight: 700; font-size: 13px; padding: 5px; border-bottom: 2px solid var(--border); word-spacing: 4px; }
+        .patient-table { width: 100%; border-collapse: collapse; text-align: center; font-size: 13px; font-weight: 600; }
+        .patient-table th, .patient-table td { border: 1px solid var(--border); padding: 6px; cursor: pointer; }
+        .patient-table th { background: #f9f9f9; }
+        .patient-table tr.active-row { background-color: #e0e7ff; border-left: 4px solid var(--blue); }
+        .patient-table tr:hover:not(.active-row) { background-color: #f1f5f9; }
+
+        /* COLUMN 2 */
+        .col2-top { display: flex; justify-content: space-between; border-bottom: 2px solid var(--border); padding-bottom: 8px; }
+        .pt-info-block { font-size: 13px; font-weight: 600; line-height: 1.5; }
+        .pt-btn-block { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+        .pill-btn { border: 1px solid var(--border); border-radius: 12px; padding: 2px 12px; font-size: 12px; font-weight: 600; background: #fff; cursor: pointer; text-align: center; display: flex; align-items: center;}
+        
+        .epcr-pill-btn {
+            border: 1.5px solid var(--blue);
+            border-radius: 12px;
+            padding: 3px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            background: #eff6ff;
+            color: var(--blue);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: background 0.15s;
+        }
+        .epcr-pill-btn:hover { background: #dbeafe; }
+        
+        .acuity-swatch { width: 14px; height: 14px; border: 1px solid #000; border-radius: 50%; margin-left: 5px; background: #d1d5db; }
+        @keyframes blink-red { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        .blink-red { animation: blink-red 1s infinite; }
+
+        .metrics-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; font-weight: 700; }
+        .vitals-grid { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+        .vital-cell { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 10px; display: flex; flex-direction: column; justify-content: center; }
+        .v-label-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; font-weight: 700; }
+        .v-norm { font-size: 10px; color: #555; font-weight: 400; }
+        .v-val { font-family: var(--font-mono); font-size: 24px; font-weight: 700; margin-top: 4px; text-align: center; }
+
+        .intel-header { padding: 4px 0; font-size: 15px; font-weight: 800; border-top: 2px solid var(--border); border-bottom: 1px solid var(--border); margin-top: 8px; text-align: center;}
+        .intel-title { font-size: 13px; font-weight: 800; margin: 10px 0 4px 0; color: var(--blue);}
+        .criticality-val { font-size: 18px; font-weight: 800; color: var(--red); line-height: 1.4; background: #fff5f5; border: 1px solid #fecaca; padding: 10px; border-radius: 4px; min-height: 40px; }
+        
+        .conditions-list { padding: 6px; }
+        
+        .condition-tag { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; font-family: var(--font-mono); padding: 6px 10px; border-radius: 4px; margin: 0 0 6px 0; border: 1px solid var(--border); background: var(--bg-alt); white-space: nowrap; }
+        .condition-tag.sev-normal  { background: #f0fdf4; border-color: #bbf7d0; color: var(--green); }
+        .condition-tag.sev-mild    { background: #fefce8; border-color: #fde68a; color: var(--news-yellow); }
+        .condition-tag.sev-moderate{ background: #fff7ed; border-color: #fed7aa; color: var(--news-orange); }
+        .condition-tag.sev-critical{ background: #fee2e2; border-color: #fca5a5; color: var(--red); }
+        .cond-icon { font-style: normal; font-size: 1.2em; }
+        .cond-sev-label { font-weight: 800; margin-right: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
+
+        .btn-forecast { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 8px; margin-top: 15px; font-weight: 700; cursor: pointer; background: #e0e7ff; color: var(--blue); }
+        .btn-forecast:hover { background: #c7d2fe; }
+        .btn-assign { background: var(--green); color: white; border: none; margin-top: 10px; }
+        .btn-assign:hover { background: #166534; }
+        .btn-epcr-full { 
+            width: 100%; border: 1.5px solid var(--blue); border-radius: 12px; 
+            padding: 8px; margin-top: 6px; font-weight: 700; cursor: pointer; 
+            background: #eff6ff; color: var(--blue);
+            font-family: var(--font-sans); font-size: 13px;
+        }
+        .btn-epcr-full:hover { background: #dbeafe; }
+
+        /* COLUMN 3 */
+        .triage-box { border-bottom: 2px solid var(--border); padding-bottom: 15px; font-size: 13px; }
+        .status-pill { border: 1px solid var(--border); border-radius: 12px; padding: 2px 10px; display: inline-block; margin: 10px 0; text-align: center; width: 100%; font-weight: 600; }
+        .triage-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+        .t-label { font-weight: 600; }
+        .db-header { text-align: center; font-size: 13px; font-weight: 700; margin: 10px 0; }
+        .db-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .db-btn { border: 1px solid var(--border); border-radius: 12px; padding: 15px 5px; text-align: center; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s;}
+        .db-btn:hover { background: var(--bg-alt); }
+
+        /* COLUMN 4 */
+        .c4-section { border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 10px; display: flex; flex-direction: column; }
+        .c4-title { font-size: 14px; font-weight: 800; margin-bottom: 5px; color: var(--blue); text-transform: uppercase;}
+        .c4-content { font-size: 13px; font-family: var(--font-sans); min-height: 80px; white-space: pre-wrap; line-height: 1.4; }
+        .c4-content.checklist { font-family: var(--font-mono); }
+        .checklist-item { margin-bottom: 6px; display: flex; gap: 5px; align-items: flex-start; }
+        .checklist-item input[type="checkbox"] { margin-top: 3px; accent-color: var(--blue); pointer-events: none;}
+        .checklist-item.checked .checklist-label { color: #aaa; text-decoration: line-through; }
+
+        .text-green { color: var(--green); }
+        .text-yellow { color: var(--yellow); }
+        .text-orange { color: var(--orange); }
+        .text-red { color: var(--red); }
+
+        /* DATABASE MODALS */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; }
+        .modal-content { background: #fff; border: 3px solid var(--border); border-radius: 8px; width: 80%; max-width: 900px; max-height: 80vh; display: flex; flex-direction: column; }
+        .modal-header { display: flex; justify-content: space-between; padding: 15px; border-bottom: 2px solid var(--border); background: var(--bg-alt); font-weight: 800; font-size: 18px;}
+        .close-btn { cursor: pointer; color: var(--red); font-weight: 800; border: none; background: none; font-size: 18px;}
+        .modal-body { padding: 15px; overflow-y: auto; flex: 1; }
+        
+        .db-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+        .db-col-box { border: 1px solid var(--border); padding: 10px; border-radius: 4px; }
+        .db-col-title { font-weight: 800; text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 5px; margin-bottom: 10px; }
+        
+        .db-item { display: flex; justify-content: space-between; align-items: center; border: 1px solid #ccc; padding: 6px; margin-bottom: 6px; border-radius: 4px; font-size: 13px; font-family: var(--font-mono);}
+        .db-item span.avail { color: var(--green); font-weight: 700; cursor: pointer; }
+        .db-item span.busy  { color: var(--red);   font-weight: 700; cursor: pointer; }
+        .btn-del { color: var(--red); cursor: pointer; font-weight: 800; padding: 0 5px; }
+
+        .add-form { display: flex; gap: 10px; margin-bottom: 15px; padding: 10px; background: var(--bg-alt); border: 1px solid var(--border); border-radius: 4px;}
+        .add-form input, .add-form select { padding: 6px; font-family: var(--font-sans); }
+        .add-btn { background: var(--blue); color: #fff; border: none; padding: 6px 15px; cursor: pointer; font-weight: 700; border-radius: 4px; }
+
+        /* ═══════════════ ePCR MODAL ═══════════════ */
+        #epcrModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.65);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        #epcrModal.open { display: flex; }
+        .epcr-dialog {
+            background: #fff;
+            border: 2px solid #1a1a1a;
+            border-radius: 6px;
+            width: 860px;
+            max-width: 96vw;
+            max-height: 92vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+        }
+        .epcr-dialog-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 18px;
+            border-bottom: 2px solid #1a1a1a;
+            background: #f5f5f5;
+            font-weight: 800;
+            font-size: 15px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .epcr-dialog-header-btns { display: flex; gap: 8px; align-items: center; }
+        .epcr-btn-download {
+            background: #1d4ed8; color: #fff;
+            border: none; border-radius: 4px;
+            padding: 7px 20px; cursor: pointer;
+            font-size: 13px; font-family: 'IBM Plex Sans', sans-serif; font-weight: 700;
+        }
+        .epcr-btn-download:hover { background: #1e40af; }
+        .epcr-btn-close {
+            background: #fee2e2; color: #b91c1c;
+            border: 1px solid #fca5a5; border-radius: 4px;
+            padding: 7px 14px; cursor: pointer;
+            font-size: 13px; font-family: 'IBM Plex Sans', sans-serif; font-weight: 700;
+        }
+        .epcr-btn-close:hover { background: #fecaca; }
+        .epcr-no-data {
+            padding: 40px;
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            font-size: 14px;
+        }
+        .epcr-dialog-body { flex: 1; overflow-y: auto; padding: 0; }
+
+        /* ePCR Document Styles */
+        #epcrDocument {
+            font-family: 'IBM Plex Sans', Arial, sans-serif;
+            font-size: 11px;
+            color: #111;
+            background: #fff;
+            padding: 28px 32px;
+            width: 100%;
+        }
+        .epcr-doc-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 3px solid #1a1a1a;
+            padding-bottom: 10px;
+            margin-bottom: 14px;
+        }
+        .epcr-doc-title { font-size: 20px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; }
+        .epcr-doc-subtitle { font-size: 11px; color: #555; margin-top: 2px; }
+        .epcr-doc-ids { text-align: right; font-size: 11px; font-family: 'IBM Plex Mono', monospace; }
+        .epcr-doc-ids strong { display: block; font-size: 13px; font-weight: 700; }
+
+        .epcr-section { margin-bottom: 14px; border: 1px solid #ccc; border-radius: 3px; overflow: hidden; }
+        .epcr-section-title { background: #1a1a1a; color: #fff; font-weight: 800; font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; padding: 5px 10px; }
+        .epcr-section-body { padding: 10px 12px; }
+
+        .epcr-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
+        .epcr-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 20px; }
+        .epcr-field { margin-bottom: 4px; }
+        .epcr-field-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #666; display: block; margin-bottom: 1px; }
+        .epcr-field-value { font-size: 12px; font-weight: 600; border-bottom: 1px solid #ddd; padding-bottom: 2px; min-height: 16px; font-family: 'IBM Plex Mono', monospace; }
+
+        .epcr-vitals-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+        .epcr-vitals-table th { background: #f5f5f5; font-weight: 700; text-align: center; padding: 5px 4px; border: 1px solid #ccc; font-size: 9px; text-transform: uppercase; }
+        .epcr-vitals-table td { text-align: center; padding: 5px 4px; border: 1px solid #ddd; font-family: 'IBM Plex Mono', monospace; }
+        .epcr-vitals-table tr:nth-child(even) td { background: #fafafa; }
+        .cell-normal { color: #15803d; }
+        .cell-mild   { color: #ca8a04; }
+        .cell-warn   { color: #d97706; }
+        .cell-crit   { color: #b91c1c; font-weight: 700; }
+
+        .epcr-profile-badge { display: inline-block; padding: 4px 12px; border-radius: 3px; font-weight: 800; font-size: 12px; margin-bottom: 8px; }
+        .epcr-profile-badge.critical { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+        .epcr-profile-badge.high     { background: #fff7ed; color: #d97706; border: 1px solid #fed7aa; }
+        .epcr-profile-badge.moderate { background: #fefce8; color: #ca8a04; border: 1px solid #fde68a; }
+        .epcr-profile-badge.stable   { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+
+        .epcr-conditions-list { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+        .epcr-cond-row { display: flex; align-items: center; gap: 8px; font-size: 10px; padding: 3px 6px; border-radius: 3px; border: 1px solid #e5e7eb; background: #f9fafb; }
+        .epcr-cond-row.sev-normal   { border-color: #bbf7d0; background: #f0fdf4; color: #15803d; }
+        .epcr-cond-row.sev-mild     { border-color: #fde68a; background: #fefce8; color: #ca8a04; }
+        .epcr-cond-row.sev-moderate { border-color: #fed7aa; background: #fff7ed; color: #d97706; }
+        .epcr-cond-row.sev-critical { border-color: #fca5a5; background: #fee2e2; color: #b91c1c; font-weight: 700; }
+
+        .epcr-checklist-row { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; border-bottom: 1px solid #f0f0f0; font-size: 10px; }
+        .epcr-checklist-row:last-child { border-bottom: none; }
+        .epcr-check-box { width: 12px; height: 12px; border: 1.5px solid #555; border-radius: 2px; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; font-size: 9px; }
+        .epcr-check-box.done { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+        .epcr-check-text { line-height: 1.5; }
+        .epcr-check-text.done { color: #999; text-decoration: line-through; }
+        .epcr-check-text.priority-critical { color: #b91c1c; font-weight: 600; }
+        .epcr-check-text.priority-high { color: #d97706; }
+
+        .epcr-notes-block { white-space: pre-wrap; font-family: 'IBM Plex Mono', monospace; font-size: 10px; line-height: 1.7; background: #fafafa; padding: 8px; border: 1px solid #e5e7eb; border-radius: 3px; }
+        .epcr-triage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
+
+        .epcr-footer { margin-top: 18px; border-top: 1.5px solid #ccc; padding-top: 6px; font-size: 9px; color: #666; display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; }
+        .epcr-footer-disclaimer { flex: 1; font-style: italic; line-height: 1.5; }
+        .epcr-footer-ids { text-align: right; font-family: 'IBM Plex Mono', monospace; white-space: nowrap; }
+
+        .epcr-acuity-line { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .epcr-acuity-swatch { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid #333; flex-shrink: 0; }
+        .gru-risk-box { padding: 8px 10px; border-radius: 3px; font-size: 11px; font-weight: 700; line-height: 1.5; margin-bottom: 8px; }
+        .gru-risk-box.alert  { background: #fff5f5; border: 1px solid #fecaca; color: #b91c1c; }
+        .gru-risk-box.normal { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
+        .gru-risk-box.pending { background: #f5f5f5; border: 1px solid #ccc; color: #555; }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-wrapper">
+    <div class="top-header">
+        <div id="dashHospital">&lt;CITY GENERAL HOSPITAL&gt;</div>
+        <div class="header-center">EMERGENCY OPERATIONS DASHBOARD</div>
+        <div id="live-time">&lt;Date, time&gt;</div>
+    </div>
+
+    <div class="main-grid">
+        <!-- COLUMN 1 -->
+        <div class="col">
+            <div class="col-header" style="border-bottom:none;">Inbound Patients</div>
+            <div class="inbound-stats" id="inboundStats">Inbound: 0 &nbsp;|&nbsp; Active: 0 &nbsp;|&nbsp; Critical: 0</div>
+            <table class="patient-table" id="inboundTable">
+                <thead>
+                    <tr><th>ID</th><th>Name</th><th>Age</th><th>Amb ID</th><th>ETA</th></tr>
+                </thead>
+                <tbody id="patientTableBody">
+                    <tr id="row-live" class="active-row">
+                        <td id="t-id">--</td><td id="t-name">Waiting...</td><td id="t-age">--</td><td id="t-amb">--</td><td id="t-eta" style="color:var(--red);">--</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div id="waitingMsg" style="padding:15px; color: #666; font-style: italic; text-align:center; font-size:12px;">Monitoring stream waiting for patient entry...</div>
+        </div>
+
+        <!-- COLUMN 2 -->
+        <div class="col">
+            <div class="content-box" style="display: flex; flex-direction: column;">
+                <div class="col2-top">
+                    <div class="pt-info-block">
+                        ID: <span id="d-id">--</span><br>
+                        Name: <span id="d-name">--</span><br>
+                        Age: <span id="d-age">--</span><br>
+                        (F/M): <span id="d-sex">--</span><br>
+                        Amb ID: <span id="d-amb">--</span>
+                    </div>
+                    <div class="pt-btn-block">
+                        <div class="pill-btn">Acuity Index <span id="d-acuity" style="font-family:var(--font-mono); margin-left:5px; margin-right:3px;">--/10</span> <div class="acuity-swatch" id="d-acuity-badge"></div></div>
+                        <div class="pill-btn">ETA <span id="d-eta" style="color:var(--red); margin-left:5px;">--</span></div>
+                        <button class="epcr-pill-btn" onclick="openEpcrModal()">📋 e-PCR</button>
+                    </div>
+                </div>
+
+                <div class="metrics-header">
+                    <span>Active Patient Metrics</span>
+                    <div class="pill-btn">Full view</div>
+                </div>
+                <div class="vitals-grid">
+                    <div class="vital-cell"><div class="v-label-row"><span>HR:</span> <span class="v-norm">51-90 bpm</span></div><div class="v-val" id="d-hr">--</div></div>
+                    <div class="vital-cell"><div class="v-label-row"><span>HRV:</span> <span class="v-norm">40-45 ms</span></div><div class="v-val" id="d-hrv">--</div></div>
+                    <div class="vital-cell"><div class="v-label-row"><span>RR:</span> <span class="v-norm">12-20 br/min</span></div><div class="v-val" id="d-rr">--</div></div>
+                    <div class="vital-cell"><div class="v-label-row"><span>SpO2:</span> <span class="v-norm">90-100%</span></div><div class="v-val" id="d-spo2">--</div></div>
+                    <div class="vital-cell"><div class="v-label-row"><span>NIBP:</span> <span class="v-norm">100-130 mmHg</span></div><div class="v-val" id="d-nibp">--</div></div>
+                    <div class="vital-cell"><div class="v-label-row"><span>Temperature:</span> <span class="v-norm">36.1-38°C</span></div><div class="v-val" id="d-temp">--</div></div>
+                </div>
+
+                <div class="intel-header">Clinical Intelligence Summary</div>
+                <div class="intel-title">Criticality (GRU Model Risk):</div>
+                <div class="criticality-val" id="d-criticality">--</div>
+                
+                <div style="font-size:15px; font-weight:800; margin-top:12px;" id="d-profile">Clinical Profile: --</div>
+                
+                <div class="intel-title" style="margin-top:12px;">Detected Conditions:</div>
+                <div class="conditions-list" id="d-conditions">Waiting for valid vitals entry...</div>
+                
+                <button class="btn-forecast" onclick="openForecast()">📈 View Full Forecast</button>
+                <button class="btn-epcr-full" onclick="openEpcrModal()">📋 Open Full e-PCR Report</button>
+            </div>
+        </div>
+
+        <!-- COLUMN 3 -->
+        <div class="col">
+            <div class="col-header">Triage Allocation</div>
+            <div class="content-box triage-box">
+                <div class="status-pill">Status: <span id="triage-status" style="color:var(--text);">Awaiting Assignment</span></div>
+                
+                <div class="triage-row"><span class="t-label">Ambulance ID:</span> <span id="triage-amb">--</span></div>
+                <div class="triage-row"><span class="t-label">Paramedic ID:</span> <span id="assign-paramedic">--</span></div>
+                
+                <div style="margin-top:10px; font-weight:600;">Staff on duty:-</div>
+                <div class="triage-row"><span style="margin-left:10px;">Doctor:</span> <span id="assign-doc">--</span></div>
+                <div class="triage-row"><span style="margin-left:10px;">Nurse:</span> <span id="assign-nurse">--</span></div>
+                <div class="triage-row" style="margin-top:5px;"><span class="t-label">Priority:</span> <span id="triage-priority" style="font-weight:700;">--</span></div>
+                
+                <div style="margin-top:15px; font-weight:600;">Assignment:-</div>
+                <div class="triage-row"><span>Ward:</span> <span id="assign-ward">--</span></div>
+                <div class="triage-row"><span>Bed/Room:</span> <span id="assign-bed">--</span></div>
+                <div class="triage-row"><span>Facility:</span> <span id="assign-facility">--</span></div>
+                <div class="triage-row"><span>Dept:</span> <span>Emergency</span></div>
+
+                <button class="btn-forecast btn-assign" onclick="startAssignment()">▶ Start Assignment</button>
+            </div>
+            
+            <div class="db-header">Databases:</div>
+            <div class="content-box db-grid">
+                <div class="db-btn" onclick="openModal('patient')">Patient<br>Registry</div>
+                <div class="db-btn" onclick="openModal('staff')">Staff<br>Registry</div>
+                <div class="db-btn" onclick="openModal('facility')">Facility<br>Registry</div>
+                <div class="db-btn" onclick="openModal('units')">Clinical Units</div>
+            </div>
+        </div>
+
+        <!-- COLUMN 4 -->
+        <div class="col">
+            <div class="content-box" style="display:flex; flex-direction:column; height:100%;">
+                <div class="c4-section">
+                    <div class="c4-title">Patient Summary :</div>
+                    <div class="c4-content" id="d-summary" style="background:#f9fafb; padding:8px; border:1px solid #ddd; overflow-y:auto; font-family: var(--font-mono);">
+                        Waiting for ePCR data...
+                    </div>
+                </div>
+                
+                <div class="c4-section" style="flex:1;">
+                    <div class="c4-title" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span>Pre-arrival Instructions:</span>
+                        <span id="dashCheckProgress" style="font-size:12px; color:#555; font-family:var(--font-mono); font-weight:600; text-transform:none;"></span>
+                    </div>
+                    <div class="c4-content checklist" id="d-prearrival" style="background:#f5f5f5; padding:8px; border:1px solid #ddd; overflow-y:auto;">
+                        Awaiting profile generation...
+                    </div>
+                </div>
+                
+                <div class="c4-section" style="flex:1; border-bottom:none;">
+                    <div class="c4-title">Hospital Clinical Orders:</div>
+                    <div class="c4-content checklist" id="d-orders" style="background:#fffbeeb3; padding:8px; border:1px solid #ddd; overflow-y:auto;">
+                        Awaiting profile generation...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DB MODAL -->
+<div class="modal-overlay" id="dbModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span id="modalTitle">Registry</span>
+            <button class="close-btn" onclick="closeModal()">X</button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+    </div>
+</div>
+
+<!-- ePCR MODAL -->
+<div id="epcrModal">
+    <div class="epcr-dialog">
+        <div class="epcr-dialog-header">
+            📋 Electronic Patient Care Report (e-PCR)
+            <div class="epcr-dialog-header-btns">
+                <button class="epcr-btn-download" id="btnDownloadEpcr">⬇ Download PDF</button>
+                <button class="epcr-btn-close" id="btnCloseEpcr">✕ Close</button>
+            </div>
+        </div>
+        <div class="epcr-dialog-body">
+            <div id="epcrDocument">
+                <div class="epcr-no-data">No patient data received yet. Waiting for ambulatory monitor stream...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Clock
+    setInterval(() => {
+        document.getElementById('live-time').innerText = new Date().toLocaleString();
+    }, 1000);
+
+    let currentVitals = {};
+    let currentPatient = null;
+    let isAssigned = false;
+    let lastSyncData = null;
+
+    let dbPatients = [];
+    let dbStaff = [
+        { id: 1, name: 'Dr. Miller', type: 'Doctor', status: 'Available' },
+        { id: 2, name: 'Dr. Stevens', type: 'Doctor', status: 'Available' },
+        { id: 3, name: 'N. Gomez, RN', type: 'Nurse', status: 'Available' },
+        { id: 4, name: 'T. Jenkins, RN', type: 'Nurse', status: 'Busy' },
+        { id: 5, name: 'JD-8821', type: 'Paramedic', status: 'Busy' },
+        { id: 6, name: 'AM-4412', type: 'Paramedic', status: 'Available' }
+    ];
+    let dbUnits = [
+        { id: 1, name: 'Trauma Bay 1', type: 'Trauma Bay', status: 'Available' },
+        { id: 2, name: 'Trauma Bay 2', type: 'Trauma Bay', status: 'Available' },
+        { id: 3, name: 'Trauma Bay 3', type: 'Trauma Bay', status: 'Available' },
+        { id: 4, name: 'Observation Unit 1', type: 'Observation Unit', status: 'Available' },
+        { id: 5, name: 'Observation Unit 2', type: 'Observation Unit', status: 'Available' },
+        { id: 6, name: 'Observation Unit 3', type: 'Observation Unit', status: 'Available' },
+        { id: 7, name: 'General Ward 1', type: 'General Ward', status: 'Available' },
+        { id: 8, name: 'General Ward 2', type: 'General Ward', status: 'Available' },
+        { id: 9, name: 'General Ward 3', type: 'General Ward', status: 'Available' }
+    ];
+    let dbFacilities = [
+        { id: 1, name: 'Cardiac Cath Lab', status: 'Available' },
+        { id: 2, name: 'CT Scanner', status: 'Occupied' },
+        { id: 3, name: '12-lead ECG Machine', status: 'Available' },
+        { id: 4, name: 'X-Ray (Portable)', status: 'Available' },
+        { id: 5, name: 'ECMO Machine', status: 'Available' },
+        { id: 6, name: 'Defibrillator', status: 'Available' },
+        { id: 7, name: 'CPAP / NIV', status: 'Available' },
+        { id: 8, name: 'Blood Lab Analyzer', status: 'Available' }
+    ];
+
+    function getColorClass(vital, val) {
+        let v = parseFloat(val);
+        if (isNaN(v)) return '';
+        if (vital === 'HR') { if(v<=40||v>130) return 'text-red'; if(v<=50||v>110) return 'text-orange'; if(v>90) return 'text-yellow'; return 'text-green'; }
+        if (vital === 'RR') { if(v<=8||v>24) return 'text-red'; if(v<=11||v>20) return 'text-yellow'; return 'text-green'; }
+        if (vital === 'SPO2') { if(v<=91) return 'text-red'; if(v<=93) return 'text-orange'; if(v<=95) return 'text-yellow'; return 'text-green'; }
+        if (vital === 'TEMP') { if(v<=35.0||v>39.0) return 'text-red'; if(v<=36.0||v>38.0) return 'text-yellow'; return 'text-green'; }
+        if (vital === 'NIBP') { if(v<=90||v>=220) return 'text-red'; if(v<=100) return 'text-orange'; if(v<=110) return 'text-yellow'; return 'text-green'; }
+        if (vital === 'HRV') { if(v<20) return 'text-red'; if(v<40) return 'text-orange'; if(v>60) return 'text-yellow'; return 'text-green'; }
+        return '';
+    }
+
+    function syncDashboard() {
+        const rawData = localStorage.getItem('em_dash_sync');
+        if (!rawData) return;
+        try {
+            const data = JSON.parse(rawData);
+            lastSyncData = data;
+
+            if(data.hospitalName && data.hospitalName !== "Click to set hospital name") {
+                document.getElementById('dashHospital').innerText = data.hospitalName;
+            }
+
+            if (data.patient) {
+                document.getElementById('waitingMsg').style.display = 'none';
+                document.getElementById('t-id').innerText   = data.patient.id || '--';
+                document.getElementById('t-name').innerText = data.patient.name || '--';
+                document.getElementById('t-age').innerText  = data.patient.age || '--';
+                document.getElementById('t-amb').innerText  = data.ambId || '--';
+                document.getElementById('t-eta').innerText  = data.eta || '--';
+                document.getElementById('d-id').innerText   = data.patient.id;
+                document.getElementById('d-name').innerText = data.patient.name;
+                document.getElementById('d-age').innerText  = data.patient.age;
+                document.getElementById('d-sex').innerText  = data.patient.sex;
+                document.getElementById('d-eta').innerText  = data.eta;
+                document.getElementById('d-amb').innerText  = data.ambId;
+                if(!isAssigned) document.getElementById('triage-amb').innerText = data.ambId;
+                currentPatient = data.patient;
+                if(!dbPatients.find(p => p.id === data.patient.id)) {
+                    dbPatients.push({...data.patient, ambId: data.ambId, arrival: new Date().toLocaleTimeString()});
+                    document.getElementById('inboundStats').innerHTML = `Inbound: 1 &nbsp;|&nbsp; Active: ${dbPatients.length} &nbsp;|&nbsp; Critical: 0`;
+                }
+            }
+
+            if (data.vitals) {
+                currentVitals = { 
+                    HR: parseFloat(data.vitals.hr), HRV: parseFloat(data.vitals.hrv), 
+                    RR: parseFloat(data.vitals.rr), SpO2: parseFloat(data.vitals.spo2), 
+                    Temp: parseFloat(data.vitals.temp), SBP: parseFloat(data.vitals.nibp) 
+                };
+                const vmap = [
+                    ['d-hr', 'HR', data.vitals.hr], ['d-hrv', 'HRV', data.vitals.hrv],
+                    ['d-rr', 'RR', data.vitals.rr], ['d-spo2', 'SPO2', data.vitals.spo2],
+                    ['d-temp', 'TEMP', data.vitals.temp], ['d-nibp', 'NIBP', data.vitals.nibp]
+                ];
+                vmap.forEach(item => {
+                    let el = document.getElementById(item[0]);
+                    el.innerText = item[2];
+                    el.className = 'v-val ' + getColorClass(item[1], item[2]);
+                });
+            }
+
+            if (data.clinical) {
+                document.getElementById('d-acuity').innerText = data.clinical.acuity || '--/10';
+                let aBadge = document.getElementById('d-acuity-badge');
+                if(data.clinical.acuityColor) {
+                    aBadge.style.background = data.clinical.acuityColor;
+                    if(data.clinical.acuityColor.includes('red') || data.clinical.acuityColor.includes('185, 28, 28') || data.clinical.acuityColor.includes('#b91c1c')) {
+                        aBadge.classList.add('blink-red');
+                    } else {
+                        aBadge.classList.remove('blink-red');
+                    }
+                }
+                document.getElementById('d-profile').innerText = "Clinical Profile: " + (data.clinical.profile || '--');
+                document.getElementById('d-criticality').innerText = data.clinical.gruRisk || '--';
+                if(data.clinical.conditionsHTML) {
+                    document.getElementById('d-conditions').innerHTML = data.clinical.conditionsHTML;
+                }
+            }
+
+            if (data.col4) {
+                document.getElementById('d-summary').innerText = data.col4.notes || 'Waiting for ePCR data...';
+                let progressSpan = document.getElementById('dashCheckProgress');
+                if (progressSpan) progressSpan.innerText = data.col4.progressText || '';
+                
+                if (data.col4.instructionsHTML) {
+                    let tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = data.col4.instructionsHTML;
+                    let paramHTML = "", hospHTML = "";
+                    let currentTarget = null;
+                    Array.from(tempDiv.children).forEach(child => {
+                        if(child.classList.contains('instr-section-title')) {
+                            if(child.innerText.includes('Paramedic')) currentTarget = 'param';
+                            else if(child.innerText.includes('Hospital')) currentTarget = 'hosp';
+                        } else if (child.classList.contains('checklist-item')) {
+                            if(currentTarget === 'param') paramHTML += child.outerHTML;
+                            else if(currentTarget === 'hosp') hospHTML += child.outerHTML;
+                        }
+                    });
+                    document.getElementById('d-prearrival').innerHTML = paramHTML || 'No paramedic instructions.';
+                    document.getElementById('d-orders').innerHTML = hospHTML || 'No hospital orders.';
+                } else {
+                    document.getElementById('d-prearrival').innerHTML = 'Awaiting profile generation...';
+                    document.getElementById('d-orders').innerHTML = 'Awaiting profile generation...';
+                }
+            }
+        } catch (e) { console.error("Dashboard Sync Error: ", e); }
+    }
+
+    // Assignment logic
+    function startAssignment() {
+        if (!currentPatient || !currentPatient.id) { alert("No patient data synced yet to assign."); return; }
+        let badgeBg = document.getElementById('d-acuity-badge').style.background || '';
+        let priority = 'GREEN', targetWard = 'General Ward', colorHex = 'var(--green)';
+        if (badgeBg.includes('red') || badgeBg.includes('185, 28, 28') || badgeBg.includes('#b91c1c')) {
+            priority = 'RED'; targetWard = 'Trauma Bay'; colorHex = 'var(--red)';
+        } else if (badgeBg.includes('orange') || badgeBg.includes('217, 119, 6') || badgeBg.includes('#d97706') || badgeBg.includes('yellow') || badgeBg.includes('202, 138, 4') || badgeBg.includes('#ca8a04')) {
+            priority = 'YELLOW / ORANGE'; targetWard = 'Observation Unit'; colorHex = 'var(--orange)';
+        }
+        let doc   = dbStaff.find(s => s.type === 'Doctor' && s.status === 'Available');
+        let nurse = dbStaff.find(s => s.type === 'Nurse' && s.status === 'Available');
+        let param = dbStaff.find(s => s.type === 'Paramedic' && s.status === 'Available');
+        let unit  = dbUnits.find(u => u.type === targetWard && u.status === 'Available');
+        let ordersText = document.getElementById('d-orders').innerText.toLowerCase();
+        let facType = 'Blood Lab Analyzer';
+        if(ordersText.includes('cath')) facType = 'Cardiac Cath Lab';
+        else if(ordersText.includes('ct ') || ordersText.includes('scanner')) facType = 'CT Scanner';
+        else if(ordersText.includes('ecg')) facType = '12-lead ECG Machine';
+        else if(ordersText.includes('x-ray')) facType = 'X-Ray (Portable)';
+        else if(ordersText.includes('ecmo')) facType = 'ECMO Machine';
+        else if(ordersText.includes('niv') || ordersText.includes('cpap')) facType = 'CPAP / NIV';
+        let fac = dbFacilities.find(f => f.name === facType && f.status === 'Available');
+        if(!fac) fac = dbFacilities.find(f => f.status === 'Available');
+
+        document.getElementById('triage-status').innerText = "Confirmed";
+        document.getElementById('triage-status').style.color = "var(--green)";
+        document.getElementById('triage-priority').innerText = priority;
+        document.getElementById('triage-priority').style.color = colorHex;
+        document.getElementById('assign-doc').innerText   = doc   ? doc.name   : 'PENDING (No Avail Doc)';
+        document.getElementById('assign-nurse').innerText = nurse ? nurse.name : 'PENDING (No Avail Nurse)';
+        document.getElementById('assign-paramedic').innerText = param ? param.name : 'Unassigned';
+        document.getElementById('assign-facility').innerText  = fac  ? fac.name  : 'None Available';
+        if (unit) {
+            document.getElementById('assign-ward').innerText = unit.type;
+            document.getElementById('assign-bed').innerText  = unit.name;
+            unit.status = 'Occupied';
+        } else {
+            document.getElementById('assign-ward').innerText = targetWard;
+            document.getElementById('assign-bed').innerText  = 'NO BED AVAILABLE';
+        }
+        if(doc)   doc.status   = 'Busy';
+        if(nurse) nurse.status = 'Busy';
+        if(param) param.status = 'Busy';
+        if(fac)   fac.status   = 'Occupied';
+        isAssigned = true;
+
+        var triageData = {
+            status: "Confirmed", priority: priority, priorityColor: colorHex,
+            doctor: doc ? doc.name : 'PENDING', nurse: nurse ? nurse.name : 'PENDING',
+            paramedic: param ? param.name : 'Unassigned',
+            ward: unit ? unit.type : targetWard,
+            bed: unit ? unit.name : 'NO BED AVAILABLE',
+            facility: fac ? fac.name : 'None Available'
+        };
+        localStorage.setItem('em_triage_sync', JSON.stringify(triageData));
+    }
+
+    // ═══ ePCR BUILD (mirrors ambulatory monitor logic, reading from localStorage) ═══
+    function fmt(d) {
+        if (!d) return '--';
+        try {
+            var dt = typeof d === 'string' ? new Date(d) : d;
+            return dt.toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+        } catch(e) { return '--'; }
+    }
+
+    function vitalClass(vital, val) {
+        var n = parseFloat(val); if(isNaN(n)) return '';
+        if (vital === 'HR')   { if(n<=40||n>130) return 'cell-crit'; if(n<=50||n>110) return 'cell-warn'; if(n>90) return 'cell-mild'; return 'cell-normal'; }
+        if (vital === 'RR')   { if(n<=8||n>24) return 'cell-crit'; if(n<=11||n>20) return 'cell-mild'; return 'cell-normal'; }
+        if (vital === 'SpO2') { if(n<=91) return 'cell-crit'; if(n<=93) return 'cell-warn'; if(n<=95) return 'cell-mild'; return 'cell-normal'; }
+        if (vital === 'Temp') { if(n<=35.0||n>39.0) return 'cell-crit'; if(n<=36.0||n>38.0) return 'cell-mild'; return 'cell-normal'; }
+        if (vital === 'NIBP') { if(n<=90||n>=220) return 'cell-crit'; if(n<=100) return 'cell-warn'; if(n<=110) return 'cell-mild'; return 'cell-normal'; }
+        if (vital === 'HRV')  { if(n<20) return 'cell-crit'; if(n<40) return 'cell-warn'; if(n>60) return 'cell-mild'; return 'cell-normal'; }
+        return '';
+    }
+
+    function news2Class(score) {
+        if (isNaN(score)) return '';
+        if (score >= 7) return 'cell-crit'; if (score >= 5) return 'cell-warn'; if (score >= 1) return 'cell-mild'; return 'cell-normal';
+    }
+
+    function buildEpcrFromSync(data) {
+        var patient  = data.patient || {};
+        var epcr     = data.epcr || {};
+        var ambId    = data.ambId || '--';
+        var hospital = (data.hospitalName && data.hospitalName !== 'Click to set hospital name') ? data.hospitalName : 'Not specified';
+        var acuity   = (data.clinical && data.clinical.acuity) ? data.clinical.acuity : '--';
+        var acuityColor = (data.clinical && data.clinical.acuityColor) ? data.clinical.acuityColor : '#d1d5db';
+        var profileText = (data.clinical && data.clinical.profile) ? data.clinical.profile : '--';
+        var gruText  = (data.clinical && data.clinical.gruRisk) ? data.clinical.gruRisk : '--';
+        var gruAlert = epcr.gruAlert || false;
+        var notes    = (data.col4 && data.col4.notes) ? data.col4.notes : '(No notes recorded)';
+        var reportTime = new Date();
+
+        var triage = {};
+        try { triage = JSON.parse(localStorage.getItem('em_triage_sync') || '{}'); } catch(e){}
+
+        // Timeline
+        var timeline = epcr.vitalsTimeline || [];
+        var timelineRows = '';
+        if (timeline.length === 0) {
+            timelineRows = '<tr><td colspan="8" style="color:#999;font-style:italic;">No vitals snapshots recorded yet.</td></tr>';
+        } else {
+            var startTime = timeline[0] ? new Date(timeline[0].t) : null;
+            timeline.forEach((snap, i) => {
+                var t = new Date(snap.t);
+                var elapsed = startTime ? 'T+' + Math.round((t - startTime) / 60000) + 'min' : 'T+' + (i*5) + 'min';
+                timelineRows += `<tr>
+                    <td>${elapsed}<br><span style="font-size:9px;color:#777;">${t.toLocaleTimeString()}</span></td>
+                    <td class="${vitalClass('HR',   snap.HR)}">${snap.HR}</td>
+                    <td class="${vitalClass('HRV',  snap.HRV)}">${snap.HRV}</td>
+                    <td class="${vitalClass('RR',   snap.RR)}">${snap.RR}</td>
+                    <td class="${vitalClass('SpO2', snap.SpO2)}">${snap.SpO2}</td>
+                    <td class="${vitalClass('Temp', snap.Temp)}">${snap.Temp}</td>
+                    <td class="${vitalClass('NIBP', snap.NIBP)}">${snap.NIBP}</td>
+                    <td class="${news2Class(snap.news2)}">${snap.news2}</td>
+                </tr>`;
+            });
+        }
+
+        // Conditions
+        var conditionRows = '';
+        if (data.clinical && data.clinical.conditionsHTML) {
+            let tmp = document.createElement('div');
+            tmp.innerHTML = data.clinical.conditionsHTML;
+            tmp.querySelectorAll('.condition-tag').forEach(tag => {
+                let cls = 'sev-normal';
+                if(tag.classList.contains('sev-critical')) cls = 'sev-critical';
+                else if(tag.classList.contains('sev-moderate')) cls = 'sev-moderate';
+                else if(tag.classList.contains('sev-mild')) cls = 'sev-mild';
+                conditionRows += `<div class="epcr-cond-row ${cls}">${tag.innerText}</div>`;
+            });
+        }
+        if (!conditionRows) conditionRows = '<div style="color:#999;font-style:italic;font-size:10px;">No conditions detected.</div>';
+
+        // Checklist from instructions HTML
+        var checklistParaHTML = '';
+        var checklistHospHTML = '';
+        if (data.col4 && data.col4.instructionsHTML) {
+            let tmp = document.createElement('div');
+            tmp.innerHTML = data.col4.instructionsHTML;
+            let currentTarget = null;
+            Array.from(tmp.children).forEach(child => {
+                if (child.classList.contains('instr-section-title')) {
+                    if (child.innerText.includes('Paramedic')) currentTarget = 'param';
+                    else if (child.innerText.includes('Hospital')) currentTarget = 'hosp';
+                } else if (child.classList.contains('checklist-item')) {
+                    let lbl = child.querySelector('.checklist-label');
+                    let done = child.classList.contains('checked');
+                    let isCrit = child.classList.contains('priority-critical');
+                    let isHigh = child.classList.contains('priority-high');
+                    let boxClass  = done ? 'done' : '';
+                    let textClass = done ? 'done' : (isCrit ? 'priority-critical' : (isHigh ? 'priority-high' : ''));
+                    let row = `<div class="epcr-checklist-row"><div class="epcr-check-box ${boxClass}">${done?'✓':''}</div><span class="epcr-check-text ${textClass}">${lbl ? lbl.innerText : ''}</span></div>`;
+                    if (currentTarget === 'param') checklistParaHTML += row;
+                    else if (currentTarget === 'hosp') checklistHospHTML += row;
+                }
+            });
+        }
+        if (!checklistParaHTML) checklistParaHTML = '<div style="color:#999;font-style:italic;font-size:10px;">No actions logged.</div>';
+        if (!checklistHospHTML) checklistHospHTML = '<div style="color:#999;font-style:italic;font-size:10px;">No orders generated.</div>';
+
+        var profileTier = 'stable';
+        if (profileText.includes('CRITICAL')) profileTier = 'critical';
+        else if (profileText.includes('HIGH')) profileTier = 'high';
+        else if (profileText.includes('MODERATE')) profileTier = 'moderate';
+
+        var gruBoxClass = (gruText === '--' || gruText.includes('Waiting')) ? 'pending' : (gruAlert ? 'alert' : 'normal');
+
+        // Triage — merge assignment from both sources
+        var triageStatus   = triage.status    || document.getElementById('triage-status').innerText    || 'Pending';
+        var triagePriority = triage.priority  || document.getElementById('triage-priority').innerText  || '--';
+        var triageDoc      = triage.doctor    || document.getElementById('assign-doc').innerText       || '--';
+        var triageNurse    = triage.nurse     || document.getElementById('assign-nurse').innerText     || '--';
+        var triageWard     = triage.ward      || document.getElementById('assign-ward').innerText      || '--';
+        var triageBed      = triage.bed       || document.getElementById('assign-bed').innerText       || '--';
+        var triageFac      = triage.facility  || document.getElementById('assign-facility').innerText  || '--';
+        var triagePara     = triage.paramedic || document.getElementById('assign-paramedic').innerText || '--';
+
+        return `
+<div class="epcr-doc-header">
+    <div>
+        <div class="epcr-doc-title">Electronic Patient Care Report</div>
+        <div class="epcr-doc-subtitle">Pre-Hospital Emergency Care Record — Ambulatory Monitor System</div>
+    </div>
+    <div class="epcr-doc-ids">
+        <strong>${patient.id || '--'}</strong>
+        ${ambId}<br>
+        Generated: ${fmt(reportTime)}
+    </div>
+</div>
+
+<div class="epcr-section">
+    <div class="epcr-section-title">Section 1 — Incident &amp; Transport Details</div>
+    <div class="epcr-section-body">
+        <div class="epcr-grid-3">
+            <div class="epcr-field"><span class="epcr-field-label">Patient ID</span><div class="epcr-field-value">${patient.id || '--'}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Full Name</span><div class="epcr-field-value">${patient.name || '--'}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Age / Sex</span><div class="epcr-field-value">${patient.age || '--'} / ${patient.sex || '--'}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Ambulance ID</span><div class="epcr-field-value">${ambId}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Paramedic ID</span><div class="epcr-field-value">${triagePara}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Receiving Hospital</span><div class="epcr-field-value">${hospital}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Dispatch Time</span><div class="epcr-field-value">${fmt(epcr.dispatchTime)}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Scene Arrival (est.)</span><div class="epcr-field-value">${fmt(epcr.sceneTime)}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Transport Started (est.)</span><div class="epcr-field-value">${fmt(epcr.transportTime)}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Hospital ETA</span><div class="epcr-field-value">${data.eta || '--'}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Incident Location</span><div class="epcr-field-value">Scene location not specified</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Report Generated</span><div class="epcr-field-value">${fmt(reportTime)}</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="epcr-section">
+    <div class="epcr-section-title">Section 2 — Vital Signs Timeline</div>
+    <div class="epcr-section-body" style="padding:0;">
+        <table class="epcr-vitals-table">
+            <thead><tr><th>Time</th><th>HR (bpm)</th><th>HRV (ms)</th><th>RR (br/min)</th><th>SpO2 (%)</th><th>Temp (°C)</th><th>NIBP (mmHg)</th><th>NEWS2</th></tr></thead>
+            <tbody>${timelineRows}</tbody>
+        </table>
+        <div style="padding:4px 10px;font-size:9px;color:#666;">
+            <span style="color:#15803d;">■ Normal</span> &nbsp; <span style="color:#ca8a04;">■ Mild</span> &nbsp; <span style="color:#d97706;">■ Warning</span> &nbsp; <span style="color:#b91c1c;font-weight:700;">■ Critical</span>
+        </div>
+    </div>
+</div>
+
+<div class="epcr-section">
+    <div class="epcr-section-title">Section 3 — Clinical Intelligence Summary</div>
+    <div class="epcr-section-body">
+        <div class="epcr-acuity-line">
+            <strong style="font-size:11px;">Acuity Index:</strong>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;">${acuity}</span>
+            <div class="epcr-acuity-swatch" style="background:${acuityColor};"></div>
+        </div>
+        <div class="epcr-profile-badge ${profileTier}">${profileText}</div>
+        <div class="gru-risk-box ${gruBoxClass}">${gruText}</div>
+        <div style="font-size:10px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.6px;color:#555;">Detected Conditions with ICD-10 Codes:</div>
+        <div class="epcr-conditions-list">${conditionRows}</div>
+    </div>
+</div>
+
+<div class="epcr-section">
+    <div class="epcr-section-title">Section 4 — Paramedic Interventions Checklist</div>
+    <div class="epcr-section-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div>
+                <div style="font-size:10px;font-weight:800;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Pre-Arrival Actions</div>
+                ${checklistParaHTML}
+            </div>
+            <div>
+                <div style="font-size:10px;font-weight:800;color:#1d4ed8;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;">Hospital Clinical Orders</div>
+                ${checklistHospHTML}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="epcr-section">
+    <div class="epcr-section-title">Section 5 — Paramedic Narrative Notes</div>
+    <div class="epcr-section-body">
+        <div class="epcr-notes-block">${notes}</div>
+    </div>
+</div>
+
+<div class="epcr-section">
+    <div class="epcr-section-title">Section 6 — Triage Assignment Record</div>
+    <div class="epcr-section-body">
+        <div class="epcr-triage-grid">
+            <div class="epcr-field"><span class="epcr-field-label">Triage Status</span><div class="epcr-field-value">${triageStatus}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Priority</span><div class="epcr-field-value">${triagePriority}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Assigned Doctor</span><div class="epcr-field-value">${triageDoc}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Assigned Nurse</span><div class="epcr-field-value">${triageNurse}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Ward</span><div class="epcr-field-value">${triageWard}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Bed / Room</span><div class="epcr-field-value">${triageBed}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Facility / Equipment</span><div class="epcr-field-value">${triageFac}</div></div>
+            <div class="epcr-field"><span class="epcr-field-label">Department</span><div class="epcr-field-value">Emergency</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="epcr-footer">
+    <div class="epcr-footer-disclaimer">This document is auto-generated by the Ambulatory Monitor system and must be reviewed and countersigned by a licensed clinician before use as a legal medical record. All clinical decisions must be made by a qualified healthcare professional. This report does not constitute a final diagnosis.</div>
+    <div class="epcr-footer-ids">${patient.id || '--'} | ${ambId}<br>Generated: ${fmt(reportTime)}</div>
+</div>`;
+    }
+
+    window.openEpcrModal = function() {
+        var epcrDoc = document.getElementById('epcrDocument');
+        if (!lastSyncData || !lastSyncData.patient) {
+            epcrDoc.innerHTML = '<div class="epcr-no-data">No patient data received yet from ambulatory monitor. Ensure the monitor is active and a patient session has been started.</div>';
+        } else {
+            epcrDoc.innerHTML = buildEpcrFromSync(lastSyncData);
+        }
+        document.getElementById('epcrModal').classList.add('open');
+    };
+
+    document.getElementById('btnCloseEpcr').addEventListener('click', function() {
+        document.getElementById('epcrModal').classList.remove('open');
+    });
+    document.getElementById('epcrModal').addEventListener('click', function(e) {
+        if (e.target === document.getElementById('epcrModal')) document.getElementById('epcrModal').classList.remove('open');
+    });
+
+    document.getElementById('btnDownloadEpcr').addEventListener('click', function() {
+        if (!lastSyncData || !lastSyncData.patient) { alert('No patient data available to download.'); return; }
+        var patient = lastSyncData.patient || {};
+        var filename = 'ePCR_' + (patient.id || 'PT') + '_' + (patient.name || 'patient').replace(/\s+/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.pdf';
+
+        var btn = document.getElementById('btnDownloadEpcr');
+        btn.textContent = '⏳ Generating...';
+        btn.disabled = true;
+
+        var opt = {
+            margin: [10, 10, 12, 10],
+            filename: filename,
+            image: { type: 'jpeg', quality: 0.97 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        };
+        html2pdf().set(opt).from(document.getElementById('epcrDocument')).save().then(function() {
+            btn.textContent = '⬇ Download PDF';
+            btn.disabled = false;
+        }).catch(function() {
+            btn.textContent = '⬇ Download PDF';
+            btn.disabled = false;
+        });
+    });
+
+    // Database modal
+    let activeModal = '';
+    function openModal(type) { activeModal = type; document.getElementById('dbModal').style.display = 'flex'; renderModalContent(); }
+    function closeModal() { document.getElementById('dbModal').style.display = 'none'; activeModal = ''; }
+    function renderModalContent() {
+        let body = document.getElementById('modalBody');
+        let title = document.getElementById('modalTitle');
+        if (activeModal === 'patient') {
+            title.innerText = "Patient Registry";
+            let html = `<table class="patient-table"><tr><th>Time</th><th>ID</th><th>Name</th><th>Age</th><th>Sex</th><th>Amb ID</th></tr>`;
+            dbPatients.forEach(p => { html += `<tr><td>${p.arrival}</td><td>${p.id}</td><td>${p.name}</td><td>${p.age}</td><td>${p.sex}</td><td>${p.ambId}</td></tr>`; });
+            html += `</table>`;
+            if(dbPatients.length === 0) html += "<p style='text-align:center;'>No patients registered yet.</p>";
+            body.innerHTML = html;
+        } else if (activeModal === 'staff') {
+            title.innerText = "Staff Registry";
+            body.innerHTML = `<div class="add-form"><select id="newType"><option>Doctor</option><option>Nurse</option><option>Paramedic</option></select><input type="text" id="newName" placeholder="Staff Name" style="flex:1;"><button class="add-btn" onclick="addDBItem('staff')">Add Staff</button></div><div class="db-cols"><div class="db-col-box"><div class="db-col-title">Doctors</div><div id="colDoc"></div></div><div class="db-col-box"><div class="db-col-title">Nurses</div><div id="colNurse"></div></div><div class="db-col-box"><div class="db-col-title">Paramedics</div><div id="colPara"></div></div></div>`;
+            populateStaff();
+        } else if (activeModal === 'units') {
+            title.innerText = "Clinical Units Registry";
+            body.innerHTML = `<div class="add-form"><select id="newType"><option>Trauma Bay</option><option>Observation Unit</option><option>General Ward</option></select><input type="text" id="newName" placeholder="Bed/Room Name" style="flex:1;"><button class="add-btn" onclick="addDBItem('units')">Add Unit</button></div><div class="db-cols"><div class="db-col-box"><div class="db-col-title">Trauma Bay</div><div id="colTrauma"></div></div><div class="db-col-box"><div class="db-col-title">Observation Unit</div><div id="colObs"></div></div><div class="db-col-box"><div class="db-col-title">General Ward</div><div id="colWard"></div></div></div>`;
+            populateUnits();
+        } else if (activeModal === 'facility') {
+            title.innerText = "Facility & Equipment Registry";
+            body.innerHTML = `<div class="add-form"><input type="text" id="newName" placeholder="Facility/Equipment Name" style="flex:1;"><button class="add-btn" onclick="addDBItem('facility')">Add Facility</button></div><div id="colFacility" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>`;
+            populateFacilities();
+        }
+    }
+    function generateItemHTML(item, dbType) {
+        let statusClass = item.status === 'Available' ? 'avail' : 'busy';
+        return `<div class="db-item"><span>${item.name}</span><div><span class="${statusClass}" onclick="toggleStatus(${item.id}, '${dbType}')">${item.status}</span><span class="btn-del" onclick="deleteItem(${item.id}, '${dbType}')">🗑</span></div></div>`;
+    }
+    function populateStaff() {
+        document.getElementById('colDoc').innerHTML   = dbStaff.filter(s => s.type === 'Doctor').map(s => generateItemHTML(s, 'staff')).join('');
+        document.getElementById('colNurse').innerHTML = dbStaff.filter(s => s.type === 'Nurse').map(s => generateItemHTML(s, 'staff')).join('');
+        document.getElementById('colPara').innerHTML  = dbStaff.filter(s => s.type === 'Paramedic').map(s => generateItemHTML(s, 'staff')).join('');
+    }
+    function populateUnits() {
+        document.getElementById('colTrauma').innerHTML = dbUnits.filter(s => s.type === 'Trauma Bay').map(s => generateItemHTML(s, 'units')).join('');
+        document.getElementById('colObs').innerHTML    = dbUnits.filter(s => s.type === 'Observation Unit').map(s => generateItemHTML(s, 'units')).join('');
+        document.getElementById('colWard').innerHTML   = dbUnits.filter(s => s.type === 'General Ward').map(s => generateItemHTML(s, 'units')).join('');
+    }
+    function populateFacilities() {
+        document.getElementById('colFacility').innerHTML = dbFacilities.map(s => generateItemHTML(s, 'facility')).join('');
+    }
+    function addDBItem(dbType) {
+        let name = document.getElementById('newName').value.trim();
+        let type = document.getElementById('newType') ? document.getElementById('newType').value : null;
+        if (!name) return;
+        let newItem = { id: Date.now(), name: name, type: type, status: 'Available' };
+        if (dbType === 'staff') dbStaff.push(newItem);
+        else if (dbType === 'units') dbUnits.push(newItem);
+        else if (dbType === 'facility') dbFacilities.push(newItem);
+        renderModalContent();
+    }
+    function toggleStatus(id, dbType) {
+        let db = dbType === 'staff' ? dbStaff : (dbType === 'units' ? dbUnits : dbFacilities);
+        let item = db.find(i => i.id === id);
+        if (item) {
+            if(dbType === 'units') item.status = item.status === 'Available' ? 'Occupied' : 'Available';
+            else item.status = item.status === 'Available' ? 'Busy' : 'Available';
+            renderModalContent();
+        }
+    }
+    function deleteItem(id, dbType) {
+        if (dbType === 'staff') dbStaff = dbStaff.filter(i => i.id !== id);
+        else if (dbType === 'units') dbUnits = dbUnits.filter(i => i.id !== id);
+        else if (dbType === 'facility') dbFacilities = dbFacilities.filter(i => i.id !== id);
+        renderModalContent();
+    }
+
+    window.openForecast = function() {
+        if (!currentVitals || isNaN(currentVitals.HR)) { alert('No live vitals data to forecast.'); return; }
+        var vb64 = btoa(JSON.stringify(currentVitals));
+        var pb64 = currentPatient ? btoa(JSON.stringify(currentPatient)) : '';
+        var url  = 'forecast.html?v=' + encodeURIComponent(vb64) + (pb64 ? '&p=' + encodeURIComponent(pb64) : '');
+        window.open(url, '_blank', 'width=1100,height=800');
+    };
+
+    setInterval(syncDashboard, 500);
+</script>
+</body>
+</html>

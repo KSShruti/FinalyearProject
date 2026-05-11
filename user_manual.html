@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Manual — Ambulatory Monitoring System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --border:      #d0d0d0;
+  --border-dark: #1a1a1a;
+  --bg:          #ffffff;
+  --bg-alt:      #f5f5f5;
+  --bg-header:   #eeeeee;
+  --text:        #111111;
+  --green:       #15803d;
+  --red:         #b91c1c;
+  --blue:        #1d4ed8;
+  --orange:      #d97706;
+  --yellow:      #ca8a04;
+  --mono:        'IBM Plex Mono', monospace;
+  --sans:        'IBM Plex Sans', sans-serif;
+  --news-green:  #15803d;
+  --news-yellow: #ca8a04;
+  --news-orange: #d97706;
+  --news-red:    #b91c1c;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1.5px solid var(--border-dark);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-logo {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  line-height: 1.4;
+  color: var(--text);
+}
+.sidebar-logo span {
+  display: block;
+  font-weight: 400;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #666;
+  margin-top: 2px;
+}
+.nav-list { list-style: none; padding: 8px 0; flex: 1; }
+.nav-list li a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  text-decoration: none;
+  color: #555;
+  font-size: 11px;
+  font-weight: 600;
+  transition: background 0.12s, color 0.12s;
+  border-left: 2px solid transparent;
+  line-height: 1.4;
+}
+.nav-list li a:hover, .nav-list li a.active {
+  background: var(--bg-alt);
+  color: var(--blue);
+  border-left-color: var(--blue);
+}
+.nav-num {
+  font-family: var(--mono);
+  font-size: 9px;
+  background: var(--bg-header);
+  color: #888;
+  padding: 1px 5px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.sidebar-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 9px;
+  color: #aaa;
+  font-family: var(--mono);
+  line-height: 1.6;
+}
+
+/* ── MAIN CONTENT ── */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+.main-header {
+  padding: 16px 32px 14px;
+  border-bottom: 2.5px solid var(--border-dark);
+  background: var(--bg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.main-header-title {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+.main-header-sub { font-size: 10px; color: #666; margin-top: 2px; font-family: var(--mono); }
+.print-btn {
+  padding: 6px 16px;
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1.5px solid var(--border-dark);
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.12s;
+}
+.print-btn:hover { background: var(--bg-alt); }
+
+.content-wrap { padding: 28px 32px 60px; max-width: 860px; }
+
+/* ── SECTIONS ── */
+.manual-section {
+  margin-bottom: 48px;
+  scroll-margin-top: 80px;
+}
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-dark);
+}
+.section-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--border-dark);
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.section-title-text {
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.3px;
+}
+
+/* ── STEP BOXES ── */
+.step-list { display: flex; flex-direction: column; gap: 10px; }
+.step {
+  display: flex;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-alt);
+  align-items: flex-start;
+}
+.step-icon {
+  width: 28px; height: 28px;
+  background: var(--border-dark);
+  color: #fff;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800;
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.step-body { flex: 1; }
+.step-title { font-weight: 700; font-size: 13px; margin-bottom: 3px; }
+.step-desc { font-size: 12px; color: #444; line-height: 1.6; }
+.step-desc code {
+  font-family: var(--mono);
+  background: var(--bg-header);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+}
+.note-box {
+  margin-top: 10px;
+  padding: 10px 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--blue);
+  line-height: 1.6;
+}
+.note-box strong { color: var(--blue); }
+
+/* ── NEWS2 TABLE ── */
+.news2-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 4px;
+}
+.news2-table th {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 7px 10px;
+  text-align: left;
+  border-bottom: 2px solid var(--border-dark);
+  background: var(--bg-header);
+}
+.news2-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  vertical-align: middle;
+}
+.news2-table tr:last-child td { border-bottom: none; }
+.news2-table td:first-child { font-weight: 700; font-size: 12px; }
+.news2-table td:nth-child(2) { font-family: var(--mono); font-size: 11px; }
+
+.swatch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+.sw-green  { background: #f0fdf4; color: var(--news-green);  border: 1px solid #bbf7d0; }
+.sw-yellow { background: #fefce8; color: var(--news-yellow); border: 1px solid #fde68a; }
+.sw-orange { background: #fff7ed; color: var(--news-orange); border: 1px solid #fed7aa; }
+.sw-red    { background: #fee2e2; color: var(--news-red);    border: 1px solid #fca5a5; }
+.sw-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.sw-green  .sw-dot { background: var(--news-green); }
+.sw-yellow .sw-dot { background: var(--news-yellow); }
+.sw-orange .sw-dot { background: var(--news-orange); }
+.sw-red    .sw-dot { background: var(--news-red); }
+
+.legend-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+/* ── CONDITIONS TABLE ── */
+.cond-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.cond-table th {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 2px solid var(--border-dark);
+  background: var(--bg-header);
+}
+.cond-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  vertical-align: top;
+}
+.cond-table tr:last-child td { border-bottom: none; }
+.cond-vital-name { font-weight: 700; font-family: var(--mono); font-size: 12px; }
+.cond-group-header td {
+  background: var(--bg-header);
+  font-weight: 800;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #555;
+  padding: 5px 10px;
+  border-top: 1.5px solid var(--border);
+}
+
+/* ── PROFILE CARDS ── */
+.profile-card {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+.profile-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1.5px solid var(--border-dark);
+}
+.profile-tier-badge {
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+.tier-critical { background: #fee2e2; color: var(--red);    border: 1px solid #fca5a5; }
+.tier-high     { background: #fff7ed; color: var(--orange); border: 1px solid #fed7aa; }
+.tier-moderate { background: #fefce8; color: var(--yellow); border: 1px solid #fde68a; }
+.tier-stable   { background: #f0fdf4; color: var(--green);  border: 1px solid #bbf7d0; }
+
+.profile-name { font-weight: 800; font-size: 14px; }
+.profile-trigger {
+  margin-left: auto;
+  font-size: 10px;
+  font-family: var(--mono);
+  color: #666;
+  background: var(--bg-alt);
+  padding: 2px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.profile-card-body { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+.pc-col {
+  padding: 10px 14px;
+  border-right: 1px solid var(--border);
+}
+.pc-col:last-child { border-right: none; }
+.pc-col-title {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #666;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.pc-col-title.blue  { color: var(--blue); }
+.pc-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.pc-list li {
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  display: flex;
+  gap: 5px;
+}
+.pc-list li::before { content: '•'; flex-shrink: 0; color: #aaa; }
+.pc-list li.pri-critical { background: #fee2e2; border-color: #fca5a5; color: var(--red); }
+.pc-list li.pri-critical::before { color: var(--red); }
+.pc-list li.pri-high { background: #fff7ed; border-color: #fed7aa; color: var(--orange); }
+.pc-list li.pri-high::before { color: var(--orange); }
+
+/* ── PRINT ── */
+@media print {
+  .sidebar { display: none; }
+  .main-header .print-btn { display: none; }
+  .content-wrap { padding: 0; }
+  .profile-card { break-inside: avoid; }
+  .manual-section { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    AMBULATORY<br>MONITOR
+    <span>User Manual v1.0</span>
+  </div>
+  <ul class="nav-list">
+    <li><a href="#s1"><span class="nav-num">01</span>How to Start Monitoring</a></li>
+    <li><a href="#s2"><span class="nav-num">02</span>NEWS2 Colour Coding</a></li>
+    <li><a href="#s3"><span class="nav-num">03</span>Detected Conditions</a></li>
+    <li><a href="#s4"><span class="nav-num">04</span>Clinical Profiles</a></li>
+  </ul>
+  <div class="sidebar-footer">
+    Intelligent Real-Time<br>Ambulatory Monitoring<br>System — MAHE Manipal
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="main-header">
+    <div>
+      <div class="main-header-title">User Manual</div>
+      <div class="main-header-sub">Intelligent Real-Time Ambulatory Monitoring System</div>
+    </div>
+    <button class="print-btn" onclick="window.print()">⎙ Print</button>
+  </div>
+
+  <div class="content-wrap">
+
+    <!-- ══════════════════════════════════════════════════
+         SECTION 1 — HOW TO START MONITORING
+    ══════════════════════════════════════════════════ -->
+    <section class="manual-section" id="s1">
+      <div class="section-heading">
+        <span class="section-num">01</span>
+        <span class="section-title-text">How to Start Monitoring</span>
+      </div>
+
+      <div class="step-list">
+        <div class="step">
+          <div class="step-icon">1</div>
+          <div class="step-body">
+            <div class="step-title">Enter Patient Name / ID</div>
+            <div class="step-desc">
+              Type the patient's full name or a unique identifier in the <code>Name / ID</code> field at the top-left of the dashboard. This field is required — it cannot be left blank.
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon">2</div>
+          <div class="step-body">
+            <div class="step-title">Enter Patient Age</div>
+            <div class="step-desc">
+              Type the patient's age (0–120 years) in the <code>Age</code> field. Numeric values only; decimals are not accepted. Age is used for age-stratified clinical scoring.
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon">3</div>
+          <div class="step-body">
+            <div class="step-title">Select Biological Sex</div>
+            <div class="step-desc">
+              Use the <code>M / F</code> dropdown to select the patient's biological sex. This is required for certain clinical scoring functions.
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon">4</div>
+          <div class="step-body">
+            <div class="step-title">Click <code>Enter</code> to Begin</div>
+            <div class="step-desc">
+              Press the blue <strong>Enter</strong> button (or press <code>Enter</code> on any field). The system will:
+              <ul style="margin-top:6px;padding-left:16px;line-height:2;font-size:12px;">
+                <li>Generate a unique Patient ID (e.g. <code>PAT-001</code>) and Ambulance ID (e.g. <code>AMB-427</code>)</li>
+                <li>Unlock the waveform and vitals panels</li>
+                <li>Connect to the MQTT broker and begin receiving live sensor data</li>
+                <li>Start the elapsed-time counter and ETA countdown</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon">5</div>
+          <div class="step-body">
+            <div class="step-title">Enter NIBP Manually</div>
+            <div class="step-desc">
+              Blood pressure (systolic) must be entered manually in the <code>NIBP</code> field in the vitals column. Type the value (e.g. <code>120</code>) and press <code>Enter</code> or click <strong>✓</strong>. This unlocks the <strong>Acuity Index</strong>, <strong>GRU Criticality</strong> output, and the <strong>View Forecast</strong> button.
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon">6</div>
+          <div class="step-body">
+            <div class="step-title">Set Hospital Name (Optional)</div>
+            <div class="step-desc">
+              Click the hospital name bar at the top of the right column to enter the receiving hospital. Press <code>Enter</code> to save or <code>Escape</code> to cancel.
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="step-icon">7</div>
+          <div class="step-body">
+            <div class="step-title">Reset / End Session</div>
+            <div class="step-desc">
+              Click the circular <strong>↺</strong> refresh button (top-left, next to the patient badge) to end the monitoring session and reset all data. A confirmation prompt will appear.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="note-box" style="margin-top:14px;">
+        <strong>Buttons available after monitoring begins:</strong> <strong>e-PCR</strong> opens the Electronic Patient Care Report in a new window (auto-refreshes every 5 s). <strong>User Manual</strong> opens this document. <strong>View Forecast</strong> opens the XGBoost deterioration forecast (requires NIBP).
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════
+         SECTION 2 — NEWS2 COLOUR CODING
+    ══════════════════════════════════════════════════ -->
+    <section class="manual-section" id="s2">
+      <div class="section-heading">
+        <span class="section-num">02</span>
+        <span class="section-title-text">NEWS2 Colour Coding for Vitals</span>
+      </div>
+
+      <div class="legend-row">
+        <span class="swatch sw-green"><span class="sw-dot"></span>Green — Normal</span>
+        <span class="swatch sw-yellow"><span class="sw-dot"></span>Yellow — Mild deviation</span>
+        <span class="swatch sw-orange"><span class="sw-dot"></span>Orange — Moderate deviation</span>
+        <span class="swatch sw-red"><span class="sw-dot"></span>Red — Critical / Urgent</span>
+      </div>
+
+      <p style="font-size:12px;color:#555;margin-bottom:12px;line-height:1.65;">
+        Vital sign values are colour-coded in real-time using adapted <strong>NEWS2 (National Early Warning Score 2)</strong> bands. The colour is reflected on the value text and the underline of each vital. HRV uses a custom autonomic health scale.
+      </p>
+
+      <table class="news2-table">
+        <thead>
+          <tr>
+            <th>Vital</th>
+            <th>Range</th>
+            <th>Unit</th>
+            <th>Colour</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <!-- HR -->
+          <tr><td colspan="4" style="background:var(--bg-alt);font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#555;padding:5px 10px;border-bottom:1px solid var(--border);">Heart Rate (HR)</td></tr>
+          <tr><td>HR ≤ 40</td><td>≤ 40</td><td>bpm</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Red — Extreme Bradycardia</span></td></tr>
+          <tr><td>HR 41–50</td><td>41–50</td><td>bpm</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Orange — Bradycardia</span></td></tr>
+          <tr><td>HR 51–90</td><td>51–90</td><td>bpm</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Green — Normal Sinus Rhythm</span></td></tr>
+          <tr><td>HR 91–110</td><td>91–110</td><td>bpm</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Yellow — Mild Tachycardia</span></td></tr>
+          <tr><td>HR 111–130</td><td>111–130</td><td>bpm</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Orange — Tachycardia</span></td></tr>
+          <tr><td>HR &gt; 130</td><td>&gt; 130</td><td>bpm</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Red — Severe Tachycardia</span></td></tr>
+
+          <!-- HRV -->
+          <tr><td colspan="4" style="background:var(--bg-alt);font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#555;padding:5px 10px;border-top:1.5px solid var(--border);border-bottom:1px solid var(--border);">Heart Rate Variability (HRV) — Autonomic Health Scale</td></tr>
+          <tr><td>HRV &lt; 20</td><td>&lt; 20</td><td>ms</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Red — Autonomic Failure</span></td></tr>
+          <tr><td>HRV 20–39</td><td>20–39</td><td>ms</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Orange — Autonomic Dysfunction</span></td></tr>
+          <tr><td>HRV 40–45</td><td>40–45</td><td>ms</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Green — Normal HRV</span></td></tr>
+          <tr><td>HRV 46–60</td><td>46–60</td><td>ms</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Yellow — Elevated HRV</span></td></tr>
+          <tr><td>HRV &gt; 60</td><td>&gt; 60</td><td>ms</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Orange — Vagal Dominance</span></td></tr>
+
+          <!-- RR -->
+          <tr><td colspan="4" style="background:var(--bg-alt);font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#555;padding:5px 10px;border-top:1.5px solid var(--border);border-bottom:1px solid var(--border);">Respiratory Rate (RR)</td></tr>
+          <tr><td>RR ≤ 8</td><td>≤ 8</td><td>br/min</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Red — Severe Bradypnoea / Apnoea</span></td></tr>
+          <tr><td>RR 9–11</td><td>9–11</td><td>br/min</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Yellow — Bradypnoea</span></td></tr>
+          <tr><td>RR 12–20</td><td>12–20</td><td>br/min</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Green — Normal</span></td></tr>
+          <tr><td>RR 21–24</td><td>21–24</td><td>br/min</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Yellow — Tachypnoea</span></td></tr>
+          <tr><td>RR &gt; 24</td><td>&gt; 24</td><td>br/min</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Red — Severe Tachypnoea</span></td></tr>
+
+          <!-- SpO2 -->
+          <tr><td colspan="4" style="background:var(--bg-alt);font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#555;padding:5px 10px;border-top:1.5px solid var(--border);border-bottom:1px solid var(--border);">Oxygen Saturation (SpO₂)</td></tr>
+          <tr><td>SpO₂ ≤ 91%</td><td>≤ 91</td><td>%</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Red — Severe Hypoxaemia</span></td></tr>
+          <tr><td>SpO₂ 92–93%</td><td>92–93</td><td>%</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Orange — Moderate Hypoxaemia</span></td></tr>
+          <tr><td>SpO₂ 94–95%</td><td>94–95</td><td>%</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Yellow — Mild Hypoxaemia</span></td></tr>
+          <tr><td>SpO₂ &gt; 95%</td><td>&gt; 95</td><td>%</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Green — Normal</span></td></tr>
+
+          <!-- Temp -->
+          <tr><td colspan="4" style="background:var(--bg-alt);font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#555;padding:5px 10px;border-top:1.5px solid var(--border);border-bottom:1px solid var(--border);">Body Temperature (Temp)</td></tr>
+          <tr><td>Temp ≤ 35.0 °C</td><td>≤ 35.0</td><td>°C</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Red — Hypothermia</span></td></tr>
+          <tr><td>Temp 35.1–36.0 °C</td><td>35.1–36.0</td><td>°C</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Yellow — Mild Hypothermia</span></td></tr>
+          <tr><td>Temp 36.1–38.0 °C</td><td>36.1–38.0</td><td>°C</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Green — Normothermia</span></td></tr>
+          <tr><td>Temp 38.1–39.0 °C</td><td>38.1–39.0</td><td>°C</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Yellow — Low-grade Pyrexia</span></td></tr>
+          <tr><td>Temp 39.1–40.0 °C</td><td>39.1–40.0</td><td>°C</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Orange — Pyrexia / Fever</span></td></tr>
+          <tr><td>Temp &gt; 40.0 °C</td><td>&gt; 40.0</td><td>°C</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Red — Hyperpyrexia</span></td></tr>
+
+          <!-- NIBP -->
+          <tr><td colspan="4" style="background:var(--bg-alt);font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:#555;padding:5px 10px;border-top:1.5px solid var(--border);border-bottom:1px solid var(--border);">Non-Invasive Blood Pressure / Systolic (NIBP)</td></tr>
+          <tr><td>SBP ≤ 90</td><td>≤ 90</td><td>mmHg</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Red — Hypotension / Shock</span></td></tr>
+          <tr><td>SBP 91–100</td><td>91–100</td><td>mmHg</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Orange — Moderate Hypotension</span></td></tr>
+          <tr><td>SBP 101–110</td><td>101–110</td><td>mmHg</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Yellow — Mild Hypotension</span></td></tr>
+          <tr><td>SBP 111–219</td><td>111–219</td><td>mmHg</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Green — Normal</span></td></tr>
+          <tr><td>SBP ≥ 220</td><td>≥ 220</td><td>mmHg</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Red — Hypertensive Emergency</span></td></tr>
+
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════
+         SECTION 3 — DETECTED CONDITIONS
+    ══════════════════════════════════════════════════ -->
+    <section class="manual-section" id="s3">
+      <div class="section-heading">
+        <span class="section-num">03</span>
+        <span class="section-title-text">Automatically Detected Conditions</span>
+      </div>
+      <p style="font-size:12px;color:#555;margin-bottom:12px;line-height:1.65;">
+        The system maps each incoming vital sign to a clinical condition label using the NEWS2 band thresholds defined in the rule engine. Conditions are displayed in the <strong>Detected Conditions</strong> box on the dashboard with a severity colour tag.
+      </p>
+
+      <table class="cond-table">
+        <thead>
+          <tr>
+            <th>Vital</th>
+            <th>Threshold</th>
+            <th>Condition Label</th>
+            <th>Severity</th>
+            <th>ICD-10</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <!-- HR -->
+          <tr class="cond-group-header"><td colspan="5">Heart Rate (HR) — bpm</td></tr>
+          <tr><td class="cond-vital-name">HR</td><td>≤ 40</td><td>Extreme Bradycardia</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Severe</span></td><td style="font-family:var(--mono);">R00.1</td></tr>
+          <tr><td class="cond-vital-name">HR</td><td>41–50</td><td>Bradycardia</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Moderate</span></td><td style="font-family:var(--mono);">R00.1</td></tr>
+          <tr><td class="cond-vital-name">HR</td><td>51–90</td><td>Normal Sinus Rhythm</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Normal</span></td><td style="font-family:var(--mono);">R00.0</td></tr>
+          <tr><td class="cond-vital-name">HR</td><td>91–110</td><td>Mild Tachycardia</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Mild</span></td><td style="font-family:var(--mono);">R00.0</td></tr>
+          <tr><td class="cond-vital-name">HR</td><td>111–130</td><td>Tachycardia</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Moderate</span></td><td style="font-family:var(--mono);">R00.0</td></tr>
+          <tr><td class="cond-vital-name">HR</td><td>&gt; 130</td><td>Severe Tachycardia</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Severe</span></td><td style="font-family:var(--mono);">R00.0</td></tr>
+
+          <!-- HRV -->
+          <tr class="cond-group-header"><td colspan="5">Heart Rate Variability (HRV) — ms</td></tr>
+          <tr><td class="cond-vital-name">HRV</td><td>&lt; 20</td><td>Severely Reduced HRV (Autonomic Failure)</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Severe</span></td><td style="font-family:var(--mono);">G90.3</td></tr>
+          <tr><td class="cond-vital-name">HRV</td><td>20–39</td><td>Reduced HRV (Autonomic Dysfunction)</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Moderate</span></td><td style="font-family:var(--mono);">G90.3</td></tr>
+          <tr><td class="cond-vital-name">HRV</td><td>40–45</td><td>Normal HRV</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Normal</span></td><td style="font-family:var(--mono);">R00.8</td></tr>
+          <tr><td class="cond-vital-name">HRV</td><td>46–60</td><td>Elevated HRV</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Mild</span></td><td style="font-family:var(--mono);">R00.8</td></tr>
+          <tr><td class="cond-vital-name">HRV</td><td>&gt; 60</td><td>High HRV (Vagal Dominance)</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Moderate</span></td><td style="font-family:var(--mono);">R00.8</td></tr>
+
+          <!-- RR -->
+          <tr class="cond-group-header"><td colspan="5">Respiratory Rate (RR) — br/min</td></tr>
+          <tr><td class="cond-vital-name">RR</td><td>≤ 8</td><td>Severe Bradypnoea / Apnoea</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Severe</span></td><td style="font-family:var(--mono);">R06.00</td></tr>
+          <tr><td class="cond-vital-name">RR</td><td>9–11</td><td>Bradypnoea</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Mild</span></td><td style="font-family:var(--mono);">R06.89</td></tr>
+          <tr><td class="cond-vital-name">RR</td><td>12–20</td><td>Normal Respiratory Rate</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Normal</span></td><td style="font-family:var(--mono);">R06.00</td></tr>
+          <tr><td class="cond-vital-name">RR</td><td>21–24</td><td>Tachypnoea</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Mild</span></td><td style="font-family:var(--mono);">R06.00</td></tr>
+          <tr><td class="cond-vital-name">RR</td><td>&gt; 24</td><td>Severe Tachypnoea</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Severe</span></td><td style="font-family:var(--mono);">R06.00</td></tr>
+
+          <!-- SpO2 -->
+          <tr class="cond-group-header"><td colspan="5">Oxygen Saturation (SpO₂) — %</td></tr>
+          <tr><td class="cond-vital-name">SpO₂</td><td>≤ 91</td><td>Severe Hypoxaemia</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Severe</span></td><td style="font-family:var(--mono);">J96.01</td></tr>
+          <tr><td class="cond-vital-name">SpO₂</td><td>92–93</td><td>Moderate Hypoxaemia</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Moderate</span></td><td style="font-family:var(--mono);">J96.01</td></tr>
+          <tr><td class="cond-vital-name">SpO₂</td><td>94–95</td><td>Mild Hypoxaemia</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Mild</span></td><td style="font-family:var(--mono);">J96.01</td></tr>
+          <tr><td class="cond-vital-name">SpO₂</td><td>&gt; 95</td><td>Normal SpO₂</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Normal</span></td><td style="font-family:var(--mono);">Z00.00</td></tr>
+
+          <!-- Temp -->
+          <tr class="cond-group-header"><td colspan="5">Body Temperature (Temp) — °C</td></tr>
+          <tr><td class="cond-vital-name">Temp</td><td>≤ 35.0</td><td>Hypothermia</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Severe</span></td><td style="font-family:var(--mono);">T68</td></tr>
+          <tr><td class="cond-vital-name">Temp</td><td>35.1–36.0</td><td>Mild Hypothermia</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Mild</span></td><td style="font-family:var(--mono);">T68</td></tr>
+          <tr><td class="cond-vital-name">Temp</td><td>36.1–38.0</td><td>Normothermia</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Normal</span></td><td style="font-family:var(--mono);">Z00.00</td></tr>
+          <tr><td class="cond-vital-name">Temp</td><td>38.1–39.0</td><td>Low-grade Pyrexia</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Mild</span></td><td style="font-family:var(--mono);">R50.9</td></tr>
+          <tr><td class="cond-vital-name">Temp</td><td>39.1–40.0</td><td>Pyrexia / Fever</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Moderate</span></td><td style="font-family:var(--mono);">R50.9</td></tr>
+          <tr><td class="cond-vital-name">Temp</td><td>&gt; 40.0</td><td>Hyperpyrexia</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Severe</span></td><td style="font-family:var(--mono);">R50.9</td></tr>
+
+          <!-- NIBP -->
+          <tr class="cond-group-header"><td colspan="5">NIBP / Systolic Blood Pressure (SBP) — mmHg</td></tr>
+          <tr><td class="cond-vital-name">NIBP</td><td>≤ 90</td><td>Hypotension / Shock</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Severe</span></td><td style="font-family:var(--mono);">R03.1</td></tr>
+          <tr><td class="cond-vital-name">NIBP</td><td>91–100</td><td>Moderate Hypotension</td><td><span class="swatch sw-orange"><span class="sw-dot"></span>Moderate</span></td><td style="font-family:var(--mono);">R03.1</td></tr>
+          <tr><td class="cond-vital-name">NIBP</td><td>101–110</td><td>Mild Hypotension</td><td><span class="swatch sw-yellow"><span class="sw-dot"></span>Mild</span></td><td style="font-family:var(--mono);">R03.1</td></tr>
+          <tr><td class="cond-vital-name">NIBP</td><td>111–219</td><td>Normal Blood Pressure</td><td><span class="swatch sw-green"><span class="sw-dot"></span>Normal</span></td><td style="font-family:var(--mono);">Z00.00</td></tr>
+          <tr><td class="cond-vital-name">NIBP</td><td>≥ 220</td><td>Hypertensive Emergency</td><td><span class="swatch sw-red"><span class="sw-dot"></span>Severe</span></td><td style="font-family:var(--mono);">I16.1</td></tr>
+
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════
+         SECTION 4 — CLINICAL PROFILES
+    ══════════════════════════════════════════════════ -->
+    <section class="manual-section" id="s4">
+      <div class="section-heading">
+        <span class="section-num">04</span>
+        <span class="section-title-text">Clinical Profiles</span>
+      </div>
+      <p style="font-size:12px;color:#555;margin-bottom:16px;line-height:1.65;">
+        The rule engine evaluates incoming vitals and matches the patient to one of 12 clinical profiles (highest severity match wins, evaluated top to bottom). Profiles requiring NIBP are skipped until a blood pressure reading is entered. Each card shows: matched conditions, paramedic pre-arrival actions, and hospital clinical orders.
+      </p>
+
+      <!-- 1. Cardiogenic Shock -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-critical">⛔ Critical</span>
+          <span class="profile-name">Cardiogenic Shock</span>
+          <span class="profile-trigger">HR &gt;100 or &lt;50 · HRV &lt;25 · SBP ≤90 · SpO₂ ≤94</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>Tachycardia / Bradycardia</li>
+              <li>Autonomic Failure (HRV↓)</li>
+              <li>Hypotension (SBP ≤90)</li>
+              <li>Hypoxaemia (SpO₂ ≤94)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-critical">Calculate NEWS2; escalate if ≥7</li>
+              <li class="pri-critical">IV access ×2; cautious fluid bolus 250 mL if SBP &lt;90 — avoid fluid overload (AHA ACLS 2020)</li>
+              <li class="pri-critical">High-flow O₂ 15 L/min via NRB mask; target SpO₂ ≥94% (BTS Oxygen Guidelines)</li>
+              <li class="pri-high">Monitor 12-lead ECG; prepare for immediate defibrillation if VF/VT onset</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li class="pri-critical">Activate cardiac catheterisation lab (STEMI/cardiogenic shock protocol) — ESC 2023</li>
+              <li class="pri-high">Norepinephrine 0.1–0.2 mcg/kg/min titrated to MAP ≥65 mmHg</li>
+              <li>Urgent ECHO, troponin, BNP, ABG; prepare IABP/Impella if refractory — NICE NG185</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Septic Shock -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-critical">⛔ Critical</span>
+          <span class="profile-name">Septic Shock</span>
+          <span class="profile-trigger">HR &gt;100 · RR &gt;22 · Temp &gt;38.3 or &lt;36.0 · SBP ≤100</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>Tachycardia (SIRS)</li>
+              <li>Tachypnoea (SIRS)</li>
+              <li>Temperature Dysregulation</li>
+              <li>Hypotension (qSOFA+)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-critical">Calculate NEWS2; escalate if ≥7</li>
+              <li class="pri-critical">IV crystalloid 30 mL/kg over 3 h; reassess lactate after each bolus (Surviving Sepsis 2021)</li>
+              <li class="pri-high">Blood cultures ×2 peripherally before antibiotics if feasible</li>
+              <li>O₂ to target SpO₂ ≥94%; apply CPAP if respiratory failure develops</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li class="pri-critical">Broad-spectrum IV antibiotics within 1 h — Surviving Sepsis 2021</li>
+              <li class="pri-high">Norepinephrine first-line; target MAP ≥65 mmHg; add vasopressin if refractory</li>
+              <li>Serum lactate, blood cultures ×2, FBC, CRP, PCT, ABG, U&amp;E, LFTs — NICE NG51</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Acute Respiratory Failure -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-critical">⛔ Critical</span>
+          <span class="profile-name">Acute Respiratory Failure</span>
+          <span class="profile-trigger">SpO₂ ≤91 · RR &gt;25 or RR ≤8</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>Severe Hypoxaemia (SpO₂ ≤91)</li>
+              <li>Severe Respiratory Rate Derangement (RR &gt;25 or ≤8)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-critical">Calculate NEWS2; escalate if ≥7</li>
+              <li class="pri-critical">High-flow O₂ 15 L/min NRB; prepare BVM; position upright 30–45° (BTS Oxygen)</li>
+              <li class="pri-critical">Early BVM ventilation if GCS &lt;8 or SpO₂ unresponsive to O₂ (AHA ACLS 2020)</li>
+              <li class="pri-high">Alert receiving hospital: ETI/RSI team required on arrival — ATLS 10th</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li class="pri-critical">RSI/intubation if SpO₂ &lt;88% on 15 L O₂ — BTS/ERS Guideline</li>
+              <li>ABG, CXR, FBC, D-dimer/CTPA if PE suspected — NICE NG115</li>
+              <li>Trial NIV (BiPAP) if conscious and cooperative; reassess after 1 h — NICE NG38</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Hypertensive Emergency -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-critical">⛔ Critical</span>
+          <span class="profile-name">Hypertensive Emergency</span>
+          <span class="profile-trigger">SBP ≥220 · HR &gt;100 or SpO₂ ≤94</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>Hypertensive Emergency (SBP ≥220)</li>
+              <li>Tachycardia</li>
+              <li>Hypoxaemia (SpO₂ ≤94)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-critical">Calculate NEWS2; escalate if ≥7</li>
+              <li class="pri-high">Semi-recumbent position; avoid sudden positional changes; keep calm</li>
+              <li class="pri-critical">Do NOT aggressively lower BP — target ≤25% reduction over first hour (ESC 2018)</li>
+              <li class="pri-high">Neurological status Q5 min; note focal deficit, headache, visual change (ATLS)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li class="pri-high">IV labetalol or nicardipine; avoid sublingual nifedipine — ESC 2018</li>
+              <li>Urgent CT head, troponin, echo, U&amp;E, urinalysis</li>
+              <li>Alert stroke/neurology team if focal neurology — NICE NG128</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Sepsis (No Shock) -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-high">⚠ High</span>
+          <span class="profile-name">Sepsis (No Shock)</span>
+          <span class="profile-trigger">HR &gt;100 · RR &gt;20 · Temp &gt;38.3 · SBP &gt;100</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>Tachycardia (SIRS)</li>
+              <li>Tachypnoea (SIRS)</li>
+              <li>Pyrexia / Fever (SIRS)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-high">Calculate NEWS2; escalate if ≥7</li>
+              <li class="pri-high">IV access; crystalloid 500 mL bolus if signs of poor perfusion (Surviving Sepsis 2021)</li>
+              <li>Monitor Temp, HR, RR every 5 min; alert ER of suspected sepsis (NEWS2 ≥5)</li>
+              <li>O₂ to maintain SpO₂ ≥94% (BTS Oxygen Guidelines)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li class="pri-high">Blood cultures ×2 then IV antibiotics within 1 h — Surviving Sepsis 2021</li>
+              <li>30 mL/kg crystalloid if lactate &gt;2 mmol/L or SBP &lt;100 mmHg</li>
+              <li>Sepsis bundle: FBC, CRP, PCT, U&amp;E, LFT, coagulation, CXR — NICE NG51</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 6. Acute Coronary Syndrome -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-high">⚠ High</span>
+          <span class="profile-name">Acute Coronary Syndrome</span>
+          <span class="profile-trigger">HR &gt;100 · HRV &lt;30 · SpO₂ 92–95</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>Tachycardia</li>
+              <li>Reduced HRV (Autonomic Stress)</li>
+              <li>Mild Hypoxaemia (SpO₂ 92–95)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-critical">Calculate NEWS2; escalate if ≥7</li>
+              <li class="pri-critical">Aspirin 300 mg PO (if no allergy/contraindication) — AHA ACLS 2020</li>
+              <li class="pri-high">12-lead ECG; transmit to receiving ER for early STEMI/NSTEMI ID</li>
+              <li>Sublingual GTN 0.4 mg if SBP &gt;100 mmHg; O₂ only if SpO₂ &lt;94% (ESC 2020 ACS)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li class="pri-critical">Activate PPCI pathway if STEMI confirmed; door-to-balloon &lt;90 min — ESC 2023</li>
+              <li class="pri-high">Dual antiplatelet: aspirin + ticagrelor 180 mg or prasugrel (per protocol)</li>
+              <li>Troponin T/I, serial ECG, ECHO, CBC, coagulation — ESC ACS Guidelines</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. Severe Asthma / COPD -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-high">⚠ High</span>
+          <span class="profile-name">Severe Asthma / COPD Exacerbation</span>
+          <span class="profile-trigger">RR &gt;22 · SpO₂ ≤94 · HR &gt;100 · Temp ≤38.3</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>Severe Tachypnoea (RR &gt;22)</li>
+              <li>Hypoxaemia (SpO₂ ≤94)</li>
+              <li>Tachycardia (Compensatory)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-critical">Calculate NEWS2; escalate if ≥7</li>
+              <li class="pri-critical">Salbutamol 5 mg nebulised ×3; add ipratropium 0.5 mg nebulised (BTS/SIGN 2019)</li>
+              <li class="pri-high">O₂ target SpO₂ 94–98% (88–92% in known COPD) — BTS Oxygen Guidelines</li>
+              <li>Position upright; alert ER: severe exacerbation, consider CPAP/NIV — GINA 2023</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li class="pri-high">IV hydrocortisone 100 mg stat or oral prednisolone 40 mg — BTS/SIGN 2019</li>
+              <li class="pri-high">IV magnesium sulphate 2 g over 20 min if life-threatening — GINA 2023</li>
+              <li>Consider ICU/HDU if PEFR &lt;33% or silent chest; ABG, CXR, FBC — NICE NG80</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 8. Hypothermic Collapse -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-high">⚠ High</span>
+          <span class="profile-name">Hypothermic Collapse</span>
+          <span class="profile-trigger">Temp ≤35.0 · HR ≤50 · HRV &lt;30</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>Hypothermia (Temp ≤35.0 °C)</li>
+              <li>Bradycardia (HR ≤50)</li>
+              <li>Autonomic Suppression (HRV↓)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-critical">Calculate NEWS2; escalate if ≥7</li>
+              <li class="pri-critical">Handle with extreme care — VF risk from physical jostling (ATLS 10th)</li>
+              <li class="pri-high">Passive external rewarming: remove wet clothing, insulate, warm IV fluids 42°C</li>
+              <li class="pri-high">Cardiac monitoring mandatory; defer defibrillation until core Temp &gt;30°C — AHA ACLS 2020</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li class="pri-high">Active internal rewarming: warmed IV fluids, warm humidified O₂, bladder irrigation — ATLS</li>
+              <li>ECG for J-waves (Osborn waves); consider ECMO if Temp &lt;28°C</li>
+              <li>Core temperature (oesophageal/rectal), ABG, glucose, electrolytes, coagulation</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 9. Compensated Shock -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-moderate">◈ Moderate</span>
+          <span class="profile-name">Compensated Shock / Pre-Shock</span>
+          <span class="profile-trigger">HR &gt;100 · SBP 91–110 · SpO₂ ≤95</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>Tachycardia</li>
+              <li>Borderline Hypotension (SBP 91–110)</li>
+              <li>Mild Hypoxaemia (SpO₂ ≤95)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-high">Calculate NEWS2; escalate if ≥7</li>
+              <li class="pri-high">IV access ×2; fluid challenge 500 mL crystalloid; reassess BP and HR (ATLS)</li>
+              <li class="pri-critical">Identify and treat reversible cause: haemorrhage, tension pneumothorax, anaphylaxis</li>
+              <li>Elevate legs 15° if no head/spinal injury; O₂ 15 L/min NRB</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li>Serial lactate measurements; target &lt;2 mmol/L — Surviving Sepsis 2021</li>
+              <li>Identify shock aetiology: ECHO, CXR, USS, FAST (trauma) — ATLS 10th</li>
+              <li>Vasopressors if fluid-unresponsive; type-and-cross; alert surgical/ICU team</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 10. Autonomic Dysregulation -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-moderate">◈ Moderate</span>
+          <span class="profile-name">Autonomic Dysregulation</span>
+          <span class="profile-trigger">HRV &lt;20 · SBP &gt;90 · SpO₂ &gt;94</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>Severe HRV Suppression (Autonomic Failure)</li>
+              <li>Haemodynamically Stable</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-high">Calculate NEWS2; escalate if ≥7</li>
+              <li>Monitor HR and rhythm continuously; note syncope or position-related symptoms</li>
+              <li>Assess medication history for β-blockers, antiarrhythmics, autonomic agents</li>
+              <li>Maintain supine position if symptomatic; avoid sudden postural changes</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li>Cardiology referral for HRV analysis, autonomic function testing, Holter — NICE NG185</li>
+              <li>Tilt-table test if orthostatic hypotension suspected; 12-lead ECG, echo</li>
+              <li>Investigate for underlying causes: diabetes, Parkinson's, amyloidosis — NICE NG28</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 11. Pyrexia / Inflammatory State -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-moderate">◈ Moderate</span>
+          <span class="profile-name">Pyrexia / Inflammatory State</span>
+          <span class="profile-trigger">Temp &gt;38.3 · HR &gt;90 · SBP &gt;100 · SpO₂ &gt;94</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>Pyrexia / Fever (Temp &gt;38.3 °C)</li>
+              <li>Tachycardia (Inflammatory)</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-high">Calculate NEWS2; escalate if ≥7</li>
+              <li>Paracetamol 1 g PO/IV if Temp &gt;38.5 °C and no contraindication (NICE)</li>
+              <li>Increase IV fluid rate; reassess temperature every 15 min</li>
+              <li class="pri-high">Monitor for deterioration to sepsis pattern: rising HR, falling BP, altered consciousness</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li>Blood cultures before empirical antibiotics if bacterial source suspected — NICE NG51</li>
+              <li>Sepsis screen: FBC, CRP, PCT, U&amp;E; imaging per suspected source (CXR, USS, CT)</li>
+              <li>Sepsis 6 bundle within 1 h if NEWS2 ≥5 or clinical concern — Surviving Sepsis 2021</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 12. Clinically Stable -->
+      <div class="profile-card">
+        <div class="profile-card-header">
+          <span class="profile-tier-badge tier-stable">✓ Stable</span>
+          <span class="profile-name">Clinically Stable</span>
+          <span class="profile-trigger">Catch-all — no higher-tier profile matched</span>
+        </div>
+        <div class="profile-card-body">
+          <div class="pc-col">
+            <div class="pc-col-title">Matched Conditions</div>
+            <ul class="pc-list">
+              <li>No critical derangement detected</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Paramedic Actions (Pre-Arrival)</div>
+            <ul class="pc-list">
+              <li class="pri-high">Calculate NEWS2; escalate if ≥7</li>
+              <li>Maintain monitoring; reassess full vital set every 5 min during transport</li>
+              <li>Establish IV access as precaution; document all observations in e-PCR</li>
+              <li>Alert ER of arrival ETA and current NEWS2 score for triage preparation</li>
+            </ul>
+          </div>
+          <div class="pc-col">
+            <div class="pc-col-title blue">Hospital Clinical Orders</div>
+            <ul class="pc-list">
+              <li>Activate NEWS2 clinical escalation protocol</li>
+              <li>Full clinical assessment in ED; repeat NEWS2 within 30 min of arrival — NICE NEWS2</li>
+              <li>Routine bloods: FBC, U&amp;E, glucose; ECG if age &gt;50 or cardiac history</li>
+              <li>Reassess for clinical deterioration; escalate per local NEWS2 escalation policy</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- FOOTER -->
+    <div style="margin-top:20px;padding-top:12px;border-top:1.5px solid var(--border-dark);display:flex;justify-content:space-between;font-size:10px;color:#999;font-family:var(--mono);">
+      <span>Intelligent Real-Time Ambulatory Monitoring System — MAHE Manipal</span>
+      <span>User Manual v1.0 — Clinical guidelines referenced: NEWS2, AHA ACLS 2020, ESC 2023, Surviving Sepsis 2021, NICE, ATLS 10th, BTS, GINA 2023</span>
+    </div>
+
+  </div><!-- /content-wrap -->
+</div><!-- /main -->
+
+<script>
+// Highlight active nav item on scroll
+var sections = document.querySelectorAll('.manual-section');
+var navLinks  = document.querySelectorAll('.nav-list li a');
+window.addEventListener('scroll', function() {
+  var scrollY = document.querySelector('.main').scrollTop;
+  sections.forEach(function(sec) {
+    var top    = sec.offsetTop - 100;
+    var bottom = top + sec.offsetHeight;
+    var id     = sec.getAttribute('id');
+    var link   = document.querySelector('.nav-list li a[href="#' + id + '"]');
+    if (link) {
+      if (scrollY >= top && scrollY < bottom) link.classList.add('active');
+      else link.classList.remove('active');
+    }
+  });
+}, { passive: true });
+
+// Attach scroll listener to .main div
+document.querySelector('.main').addEventListener('scroll', function() {
+  var scrollY = this.scrollTop;
+  sections.forEach(function(sec) {
+    var top    = sec.offsetTop - 100;
+    var bottom = top + sec.offsetHeight;
+    var id     = sec.getAttribute('id');
+    var link   = document.querySelector('.nav-list li a[href="#' + id + '"]');
+    if (link) {
+      if (scrollY >= top && scrollY < bottom) link.classList.add('active');
+      else link.classList.remove('active');
+    }
+  });
+}, { passive: true });
+</script>
+</body>
+</html>

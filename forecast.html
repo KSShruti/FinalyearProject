@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criticality Forecast</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --border:      #d0d0d0;
+            --border-dark: #1a1a1a;
+            --bg:          #ffffff;
+            --bg-alt:      #f7f7f7;
+            --bg-header:   #f2f2f2;
+            --text:        #111111;
+            --text-muted:  #888888;
+            --text-subtle: #aaaaaa;
+            --green:       #16a34a;
+            --yellow:      #ca8a04;
+            --red:         #dc2626;
+            --blue:        #1d4ed8;
+            --mono:        'IBM Plex Mono', monospace;
+            --sans:        'IBM Plex Sans', sans-serif;
+
+            --color-acuity: #dc2626;
+            --color-hr:     #16a34a;
+            --color-spo2:   #1d4ed8;
+            --color-rr:     #d97706;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: var(--bg);
+            font-family: var(--sans);
+            font-size: 13px;
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 24px;
+            border-bottom: 2px solid var(--border-dark);
+            background: var(--bg);
+            flex-shrink: 0;
+        }
+        .header-left {
+            display: flex; align-items: center; gap: 14px;
+        }
+        .btn-back {
+            display: flex; align-items: center; gap: 6px;
+            border: 1px solid var(--border-dark);
+            border-radius: 3px;
+            padding: 5px 14px;
+            font-size: 12px; font-family: var(--sans); font-weight: 500;
+            background: var(--bg); cursor: pointer; color: var(--text);
+            text-decoration: none;
+        }
+        .btn-back:hover { background: var(--bg-alt); }
+        .header-title {
+            font-weight: 700; font-size: 15px;
+            letter-spacing: 2.5px; text-transform: uppercase;
+        }
+        .header-right {
+            display: flex; align-items: center; gap: 20px;
+            font-size: 12px; color: var(--text-muted);
+        }
+        .patient-chip {
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 4px 12px;
+            font-size: 11px;
+            font-family: var(--mono);
+            color: var(--text);
+        }
+        .generated-at {
+            font-size: 11px; color: var(--text-subtle);
+        }
+
+        /* ── LOADING STATE ── */
+        .loading-state {
+            flex: 1;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 14px; color: var(--text-muted);
+        }
+        .spinner {
+            width: 32px; height: 32px;
+            border: 3px solid var(--border);
+            border-top-color: var(--border-dark);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-label { font-size: 13px; font-weight: 500; letter-spacing: 0.5px; }
+
+        /* ── ERROR STATE ── */
+        .error-state {
+            flex: 1;
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 10px; color: var(--red);
+        }
+        .error-icon { font-size: 32px; }
+        .error-msg { font-size: 13px; font-weight: 600; }
+        .error-detail { font-size: 11px; color: var(--text-muted); max-width: 400px; text-align: center; }
+
+        /* ── MAIN CONTENT ── */
+        .content {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+            padding: 20px 24px;
+            gap: 16px;
+        }
+
+        /* ── SUMMARY ROW ── */
+        .summary-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        .summary-card {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 14px 16px;
+            background: var(--bg-alt);
+            display: flex; flex-direction: column; gap: 6px;
+        }
+        .summary-card-label {
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+        .summary-card-now {
+            font-family: var(--mono); font-size: 24px; font-weight: 600;
+            color: var(--text);
+            border-bottom: 2px solid var(--border-dark);
+            padding-bottom: 4px; display: inline-block;
+        }
+        .summary-card-trend {
+            font-size: 11px; color: var(--text-muted);
+            display: flex; align-items: center; gap: 4px;
+        }
+        .trend-arrow { font-size: 13px; font-weight: 700; }
+        .trend-up   { color: var(--red); }
+        .trend-down { color: var(--blue); }
+        .trend-flat { color: var(--text-subtle); }
+
+        /* ── CHART SECTION ── */
+        .charts-section {
+            border: 1px solid var(--border-dark);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .charts-header {
+            padding: 10px 16px;
+            background: var(--bg-header);
+            border-bottom: 1px solid var(--border-dark);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .charts-header-title {
+            font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+        .horizon-labels {
+            display: flex; gap: 8px; align-items: center;
+        }
+        .horizon-label {
+            font-family: var(--mono); font-size: 10px;
+            color: var(--text-subtle);
+            padding: 2px 6px;
+            border: 1px solid var(--border);
+            border-radius: 2px;
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: 120px 1fr;
+            border-bottom: 1px solid var(--border);
+        }
+        .chart-row:last-child { border-bottom: none; }
+        .chart-row-label {
+            display: flex; flex-direction: column;
+            justify-content: center;
+            padding: 16px 16px;
+            border-right: 1px solid var(--border);
+            background: var(--bg-alt);
+        }
+        .chart-row-name {
+            font-size: 13px; font-weight: 700; color: var(--text);
+        }
+        .chart-row-unit {
+            font-size: 10px; color: var(--text-subtle); margin-top: 2px;
+        }
+        .chart-row-current {
+            font-family: var(--mono); font-size: 18px; font-weight: 600;
+            margin-top: 6px;
+        }
+        .chart-wrap {
+            height: 130px;
+            padding: 8px 16px 8px 8px;
+            position: relative;
+        }
+
+        /* ── TABLE ── */
+        .table-section {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .table-header {
+            padding: 8px 16px;
+            background: var(--bg-header);
+            border-bottom: 1px solid var(--border);
+            font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-muted);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        thead tr {
+            background: var(--bg-alt);
+            border-bottom: 1px solid var(--border);
+        }
+        thead th {
+            padding: 8px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 0.3px;
+        }
+        tbody tr {
+            border-bottom: 1px solid var(--border);
+            transition: background 0.1s;
+        }
+        tbody tr:last-child { border-bottom: none; }
+        tbody tr:hover { background: var(--bg-alt); }
+        tbody tr.current-row { background: #f0f9ff; }
+        tbody td {
+            padding: 10px 16px;
+            font-family: var(--mono);
+            font-size: 12px;
+        }
+        td.label-cell {
+            font-family: var(--sans);
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+        .risk-pill {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: var(--sans);
+            letter-spacing: 0.3px;
+        }
+        .risk-Low    { background: #dcfce7; color: #15803d; }
+        .risk-Medium { background: #fef9c3; color: #a16207; }
+        .risk-High   { background: #fee2e2; color: #dc2626; }
+
+        /* ── FOOTER ── */
+        .footer {
+            padding: 10px 24px;
+            border-top: 1px solid var(--border);
+            font-size: 10px; color: var(--text-subtle);
+            display: flex; justify-content: space-between;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="header-left">
+        <a class="btn-back" href="javascript:window.close()">← Close</a>
+        <div class="header-title">Criticality Forecast</div>
+    </div>
+    <div class="header-right">
+        <span class="patient-chip" id="patientChip">--</span>
+        <span class="generated-at" id="generatedAt">--</span>
+    </div>
+</div>
+
+<!-- LOADING -->
+<div class="loading-state" id="loadingState">
+    <div class="spinner"></div>
+    <div class="loading-label">Running forecast model...</div>
+</div>
+
+<!-- ERROR -->
+<div class="error-state" id="errorState">
+    <div class="error-icon">⚠</div>
+    <div class="error-msg">Forecast unavailable</div>
+    <div class="error-detail" id="errorDetail">Could not reach the FastAPI server. Make sure acuity_server.py is running.</div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="content" id="content">
+
+    <div class="summary-row" id="summaryRow"></div>
+
+    <div class="charts-section">
+        <div class="charts-header">
+            <span class="charts-header-title">Vital Trend Forecast — T+0 to T+30 min</span>
+            <div class="horizon-labels">
+                <span class="horizon-label">T+0</span>
+                <span class="horizon-label">T+10</span>
+                <span class="horizon-label">T+20</span>
+                <span class="horizon-label">T+30</span>
+            </div>
+        </div>
+
+        <div class="chart-row">
+            <div class="chart-row-label">
+                <div class="chart-row-name">Acuity Index</div>
+                <div class="chart-row-unit">0 – 10</div>
+                <div class="chart-row-current" id="cur-acuity" style="color:var(--color-acuity)">--</div>
+            </div>
+            <div class="chart-wrap"><canvas id="chartAcuity"></canvas></div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-row-label">
+                <div class="chart-row-name">HR</div>
+                <div class="chart-row-unit">BPM</div>
+                <div class="chart-row-current" id="cur-hr" style="color:var(--color-hr)">--</div>
+            </div>
+            <div class="chart-wrap"><canvas id="chartHR"></canvas></div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-row-label">
+                <div class="chart-row-name">SpO₂</div>
+                <div class="chart-row-unit">%</div>
+                <div class="chart-row-current" id="cur-spo2" style="color:var(--color-spo2)">--</div>
+            </div>
+            <div class="chart-wrap"><canvas id="chartSpO2"></canvas></div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-row-label">
+                <div class="chart-row-name">RR</div>
+                <div class="chart-row-unit">BrPM</div>
+                <div class="chart-row-current" id="cur-rr" style="color:var(--color-rr)">--</div>
+            </div>
+            <div class="chart-wrap"><canvas id="chartRR"></canvas></div>
+        </div>
+    </div>
+
+    <div class="table-section">
+        <div class="table-header">Forecast Data Table</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Acuity Index</th>
+                    <th>Risk</th>
+                    <th>HR (BPM)</th>
+                    <th>SpO₂ (%)</th>
+                    <th>RR (BrPM)</th>
+                </tr>
+            </thead>
+            <tbody id="forecastTableBody"></tbody>
+        </table>
+    </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    <span>Forecast based on eICU dataset trends · XGBoost Regressor · T+0 to T+30 min</span>
+    <span>For clinical decision support only — not a substitute for clinical judgment</span>
+</div>
+
+<script>
+const ACUITY_API = "http://localhost:8000/forecast";
+
+const CHART_COLORS = {
+    acuity: '#dc2626',
+    hr:     '#16a34a',
+    spo2:   '#1d4ed8',
+    rr:     '#d97706',
+};
+
+// ── Vitals & patient from URL params (base64 JSON) ───────────────────────────
+// index.html encodes: forecast.html?v=<base64vitals>&p=<base64patient>
+// This is the only reliable method for file:// protocol in Chrome 88+.
+// localStorage is NOT shared across different file:// URLs (each file has its
+// own storage origin). window.opener may be null or throw a SecurityError
+// depending on Chrome's cross-origin opener policy.
+function getVitals() {
+    // 1. URL params — primary, always works on file://
+    try {
+        var params = new URLSearchParams(window.location.search);
+        var vb64   = params.get('v');
+        if (vb64) return JSON.parse(atob(vb64));
+    } catch(e) { console.warn('[Forecast] URL param decode failed:', e); }
+
+    // 2. window.opener — fallback for backward compat
+    try {
+        if (window.opener && window.opener.FORECAST_VITALS) {
+            return window.opener.FORECAST_VITALS;
+        }
+    } catch(e) { console.warn('[Forecast] window.opener access error:', e); }
+
+    // 3. localStorage — last resort
+    try {
+        var raw = localStorage.getItem('forecast_vitals');
+        if (raw) return JSON.parse(raw);
+    } catch(e) {}
+
+    return null;
+}
+
+function getPatientInfo() {
+    // 1. URL params
+    try {
+        var params = new URLSearchParams(window.location.search);
+        var pb64   = params.get('p');
+        if (pb64) return JSON.parse(atob(pb64));
+    } catch(e) {}
+
+    // 2. window.opener
+    try {
+        if (window.opener && window.opener.PATIENT) return window.opener.PATIENT;
+    } catch(e) {}
+
+    // 3. localStorage
+    try {
+        var raw = localStorage.getItem('forecast_patient');
+        if (raw) return JSON.parse(raw);
+    } catch(e) {}
+
+    return null;
+}
+
+// ── Build charts ──────────────────────────────────────────────────────────────
+function makeChart(canvasId, color, labels, data, yMin, yMax) {
+    var ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                borderColor: color,
+                backgroundColor: color + '18',
+                borderWidth: 2.5,
+                pointRadius: 5,
+                pointBackgroundColor: color,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                fill: true,
+                tension: 0.35,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 600, easing: 'easeInOutQuart' },
+            scales: {
+                y: {
+                    min: yMin, max: yMax,
+                    ticks: { font: { size: 9, family: "'IBM Plex Mono'" }, color: '#aaa' },
+                    grid:  { color: '#eee' },
+                },
+                x: {
+                    ticks: { font: { size: 10, family: "'IBM Plex Mono'" }, color: '#888' },
+                    grid:  { color: '#f0f0f0' },
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: function(ctx) { return ' ' + ctx.parsed.y; } } }
+            }
+        },
+        plugins: [{
+            afterDatasetsDraw: function(chart) {
+                var c  = chart.ctx;
+                var d  = chart.data;
+                var ds = chart.getDatasetMeta(0);
+                ds.data.forEach(function(point, i) {
+                    c.save();
+                    c.fillStyle = color;
+                    c.font = "600 10px 'IBM Plex Mono'";
+                    c.textAlign = 'center';
+                    c.fillText(d.datasets[0].data[i], point.x, point.y - 10);
+                    c.restore();
+                });
+            }
+        }]
+    });
+}
+
+// ── Render summary cards ──────────────────────────────────────────────────────
+function trendArrow(current, last) {
+    var diff = last - current;
+    if (Math.abs(diff) < 0.5) return { arrow: '→', cls: 'trend-flat', label: 'Stable' };
+    if (diff > 0) return { arrow: '↑', cls: 'trend-up', label: '+' + diff.toFixed(1) + ' by T+30' };
+    return { arrow: '↓', cls: 'trend-down', label: diff.toFixed(1) + ' by T+30' };
+}
+
+function renderSummary(forecast) {
+    var first = forecast[0];
+    var last  = forecast[forecast.length - 1];
+
+    var cards = [
+        { label: 'Acuity Index', key: 'acuity_index', unit: '/10',   color: CHART_COLORS.acuity },
+        { label: 'Heart Rate',   key: 'hr',            unit: ' bpm',  color: CHART_COLORS.hr     },
+        { label: 'SpO\u2082',   key: 'spo2',           unit: '%',     color: CHART_COLORS.spo2   },
+        { label: 'Resp. Rate',  key: 'rr',             unit: ' br/m', color: CHART_COLORS.rr     },
+    ];
+
+    var container = document.getElementById('summaryRow');
+    container.innerHTML = cards.map(function(c) {
+        var trend = trendArrow(first[c.key], last[c.key]);
+        return '<div class="summary-card">'
+            + '<div class="summary-card-label">' + c.label + '</div>'
+            + '<div class="summary-card-now" style="color:' + c.color + '">' + first[c.key] + c.unit + '</div>'
+            + '<div class="summary-card-trend">'
+            + '<span class="trend-arrow ' + trend.cls + '">' + trend.arrow + '</span>'
+            + '<span>' + trend.label + '</span>'
+            + '</div></div>';
+    }).join('');
+}
+
+// ── Render table ──────────────────────────────────────────────────────────────
+function renderTable(forecast) {
+    var tbody = document.getElementById('forecastTableBody');
+    tbody.innerHTML = forecast.map(function(p, i) {
+        return '<tr class="' + (i === 0 ? 'current-row' : '') + '">'
+            + '<td class="label-cell">' + (i === 0 ? 'T+0 (Now)' : 'T+' + p.t + ' min') + '</td>'
+            + '<td>' + p.acuity_index.toFixed(1) + '</td>'
+            + '<td><span class="risk-pill risk-' + p.risk_band + '">' + p.risk_band + '</span></td>'
+            + '<td>' + p.hr + '</td>'
+            + '<td>' + p.spo2 + '</td>'
+            + '<td>' + p.rr + '</td>'
+            + '</tr>';
+    }).join('');
+}
+
+// ── Render charts ─────────────────────────────────────────────────────────────
+function renderCharts(forecast) {
+    var labels = forecast.map(function(p) { return 'T+' + p.t; });
+
+    document.getElementById('cur-acuity').textContent = forecast[0].acuity_index.toFixed(1);
+    document.getElementById('cur-hr').textContent     = forecast[0].hr;
+    document.getElementById('cur-spo2').textContent   = forecast[0].spo2;
+    document.getElementById('cur-rr').textContent     = forecast[0].rr;
+
+    var acuityVals = forecast.map(function(p) { return parseFloat(p.acuity_index.toFixed(2)); });
+    var hrVals     = forecast.map(function(p) { return p.hr; });
+    var spo2Vals   = forecast.map(function(p) { return p.spo2; });
+    var rrVals     = forecast.map(function(p) { return p.rr; });
+
+    makeChart('chartAcuity', CHART_COLORS.acuity, labels, acuityVals, 0, 10);
+    makeChart('chartHR',     CHART_COLORS.hr,     labels, hrVals,
+        Math.max(20,  Math.min.apply(null, hrVals)   - 15), Math.min(250, Math.max.apply(null, hrVals)   + 15));
+    makeChart('chartSpO2',   CHART_COLORS.spo2,   labels, spo2Vals,
+        Math.max(50,  Math.min.apply(null, spo2Vals) - 5),  100);
+    makeChart('chartRR',     CHART_COLORS.rr,     labels, rrVals,
+        Math.max(4,   Math.min.apply(null, rrVals)   - 5),  Math.min(60, Math.max.apply(null, rrVals) + 5));
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+function showError(msg) {
+    document.getElementById('loadingState').style.display  = 'none';
+    document.getElementById('errorState').style.display    = 'flex';
+    document.getElementById('errorDetail').textContent     = msg;
+}
+
+async function loadForecast() {
+    var vitals  = getVitals();
+    var patient = getPatientInfo();
+
+    if (patient) {
+        document.getElementById('patientChip').textContent =
+            patient.id + ' · ' + patient.name + ' · Age ' + patient.age + ' · ' + patient.sex;
+    }
+    document.getElementById('generatedAt').textContent =
+        'Generated: ' + new Date().toLocaleTimeString();
+
+    if (!vitals) {
+        showError('No vitals data found. Open this page from the Ambulatory Monitor dashboard (click "View Forecast").');
+        return;
+    }
+
+    // 10-second timeout so the spinner never hangs forever
+    var controller = new AbortController();
+    var timeoutId  = setTimeout(function() { controller.abort(); }, 10000);
+
+    try {
+        var res = await fetch(ACUITY_API, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify(vitals),
+            signal:  controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+            var detail = '';
+            try { detail = await res.text(); } catch(e) {}
+            throw new Error('Server returned ' + res.status + (detail ? ': ' + detail : ''));
+        }
+
+        var data     = await res.json();
+        var forecast = data.forecast;
+
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('content').style.display      = 'flex';
+
+        renderSummary(forecast);
+        renderCharts(forecast);
+        renderTable(forecast);
+
+    } catch(err) {
+        clearTimeout(timeoutId);
+        showError(
+            err.name === 'AbortError'
+                ? 'Request timed out after 10 s. Make sure acuity_server.py is running on port 8000.'
+                : err.message + '. Make sure acuity_server.py is running on port 8000.'
+        );
+    }
+}
+
+loadForecast();
+</script>
+</body>
+</html>

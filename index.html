@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ambulatory Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --border:      #d0d0d0;
+            --border-dark: #1a1a1a;
+            --bg:          #ffffff;
+            --bg-alt:      #f5f5f5;
+            --bg-header:   #eeeeee;
+            --text:        #111111;
+            --text-muted:  #111111;
+            --text-subtle: #111111;
+            --green:       #15803d;
+            --red:         #b91c1c;
+            --blue:        #1d4ed8;
+            --mono:        'IBM Plex Mono', monospace;
+            --sans:        'IBM Plex Sans', sans-serif;
+
+            --news-green:  #15803d;
+            --news-yellow: #ca8a04;
+            --news-orange: #d97706;
+            --news-red:    #b91c1c;
+
+            --f-xs:   clamp(9px, 0.78vw, 12px);
+            --f-sm:   clamp(10px, 0.88vw, 13px);
+            --f-base: clamp(11px, 0.98vw, 14px);
+            --f-md:   clamp(12px, 1.05vw, 15px);
+            --f-lg:   clamp(14px, 1.3vw,  18px);
+            --f-xl:   clamp(16px, 1.6vw,  21px);
+            --f-2xl:  clamp(15px, 1.7vw,  21px);
+            --f-3xl:  clamp(17px, 1.9vw,  25px);
+            --f-head: clamp(15px, 1.7vw,  23px);
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: var(--bg);
+            font-family: var(--sans);
+            font-size: var(--f-base);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ═══════════════ TOP HEADER ═══════════════ */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 14px;
+            border-bottom: 2.5px solid var(--border-dark);
+            background: var(--bg);
+            flex-shrink: 0;
+            gap: 10px;
+            min-height: 0;
+        }
+
+        .entry-form { display: flex; align-items: center; gap: 7px; }
+        .pin {
+            border: 1.5px solid var(--border-dark);
+            border-radius: 20px;
+            padding: 5px 13px;
+            font-size: var(--f-md);
+            font-family: var(--sans);
+            color: var(--text);
+            outline: none;
+            background: var(--bg);
+            transition: border-color 0.15s;
+        }
+        .pin:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(29,78,216,0.1); }
+        .pin.error { border-color: var(--red); }
+        .pin-name { width: clamp(110px, 11vw, 155px); }
+        .pin-age  { width: clamp(58px, 5.5vw, 76px); }
+        .pin-age::-webkit-inner-spin-button,
+        .pin-age::-webkit-outer-spin-button { appearance: none; }
+        .pin-sex  { width: clamp(58px, 5.5vw, 76px); appearance: none; cursor: pointer; text-align: center; }
+
+        .btn-enter {
+            background: var(--blue); color: #fff;
+            border: none; border-radius: 4px;
+            padding: 6px 18px;
+            font-size: var(--f-md); font-family: var(--sans); font-weight: 700;
+            cursor: pointer; letter-spacing: 0.3px;
+        }
+        .btn-enter:hover { background: #1e40af; }
+
+        .patient-badge {
+            display: none;
+            align-items: center;
+            gap: 0;
+            font-size: var(--f-sm);
+            color: var(--text);
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 5px 13px;
+            white-space: nowrap;
+        }
+        .patient-badge strong { color: var(--text); font-size: var(--f-md); }
+        .patient-badge .pid  { color: var(--text); font-family: var(--mono); font-size: var(--f-sm); margin-right: 5px; }
+        .patient-badge .sep  { margin: 0 8px; color: var(--border); }
+        
+        .amb-pill {
+            display: none; align-items: center; justify-content: center;
+            border: 1px solid var(--blue); border-radius: 4px;
+            padding: 4px 10px; color: var(--blue); font-weight: bold; background: #eff6ff; font-size: var(--f-sm);
+        }
+
+        .btn-refresh {
+            display: none;
+            align-items: center; justify-content: center;
+            width: 32px; height: 32px;
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            background: var(--bg);
+            cursor: pointer;
+            font-size: var(--f-lg);
+            color: var(--text);
+            flex-shrink: 0;
+            transition: background 0.15s, color 0.15s;
+        }
+        .btn-refresh:hover { background: #fee2e2; color: var(--red); border-color: var(--red); }
+
+        .header-center {
+            font-weight: 800; font-size: var(--f-head);
+            letter-spacing: clamp(3px, 0.4vw, 6px);
+            text-transform: uppercase;
+            white-space: nowrap; flex-shrink: 0;
+        }
+
+        .header-right {
+            display: flex; align-items: center; gap: clamp(8px, 1.2vw, 18px);
+            font-size: var(--f-sm); color: var(--text);
+            white-space: nowrap;
+        }
+        .header-right strong { color: var(--text); font-family: var(--mono); font-size: var(--f-md); }
+        .eta-value { color: var(--red); font-weight: 800; font-size: var(--f-md); }
+        .status-pill {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 11px;
+            border: 1px solid var(--border);
+            border-radius: 20px; font-size: var(--f-sm);
+        }
+        .status-dot {
+            width: 9px; height: 9px; border-radius: 50%;
+            background: #f0ad4e; flex-shrink: 0;
+        }
+
+        /* ═══════════════ SECOND ROW ═══════════════ */
+        .second-row {
+            display: grid;
+            grid-template-columns: 2fr 0.8fr 1.2fr;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-alt);
+            flex-shrink: 0;
+        }
+        .acuity-cell {
+            display: flex; align-items: center; gap: 10px;
+            padding: 5px 14px;
+            border-right: 1px solid var(--border);
+            font-weight: 800; font-size: var(--f-lg);
+            letter-spacing: 0.2px;
+        }
+        .acuity-score { font-family: var(--mono); font-size: var(--f-xl); font-weight: 700; }
+        
+        .acuity-swatch {
+            width: 22px; height: 22px;
+            border: 1.5px solid var(--border-dark);
+            background: #d1d5db; 
+            border-radius: 50%;
+            transition: background 0.3s;
+        }
+        @keyframes blink-red { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        .blink-red { animation: blink-red 1s infinite; }
+
+        .btn-cell {
+            display: flex; align-items: center; justify-content: center;
+            padding: 5px 8px;
+            border-right: 1px solid var(--border);
+        }
+        .btn-cell:last-child { border-right: none; }
+        .btn-pill {
+            border: 1.5px solid var(--border-dark);
+            border-radius: 16px; padding: 5px 22px;
+            font-size: var(--f-md); font-family: var(--sans); font-weight: 700;
+            background: var(--bg); cursor: pointer; color: var(--text);
+            letter-spacing: 0.2px;
+        }
+        .btn-pill:hover { background: var(--bg-header); }
+
+        /* ═══════════════ MAIN GRID ═══════════════ */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 0.8fr 1.2fr;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .locked-zone {
+            grid-column: span 2;
+            display: grid;
+            grid-template-columns: 2fr 0.8fr;
+            position: relative;
+            overflow: hidden;
+            border-right: 1px solid var(--border);
+        }
+
+        .locked-zone .skeleton-overlay {
+            display: flex;
+            position: absolute;
+            inset: 0;
+            z-index: 10;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                -45deg,
+                transparent,
+                transparent 18px,
+                rgba(0,0,0,0.016) 18px,
+                rgba(0,0,0,0.016) 19px
+            );
+        }
+        .locked-zone.active .skeleton-overlay { display: none; }
+
+        .col {
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .col:last-child { border-right: none; }
+
+        /* ═══════════════ WAVEFORMS ═══════════════ */
+        .wave-panel {
+            border-bottom: 1px solid var(--border);
+            padding: 2px 10px 2px;
+            flex: 1;
+            display: flex; flex-direction: column;
+            min-height: 0;
+        }
+        .wave-panel:last-of-type { border-bottom: none; }
+
+        .wave-label {
+            font-size: var(--f-xs); font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1.1px;
+            color: var(--text); margin-bottom: 1px;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-shrink: 0;
+        }
+        .wave-unit { font-weight: 400; color: var(--text); font-size: var(--f-xs); text-transform: none; letter-spacing: 0; }
+        .chart-wrap { flex: 1; width: 100%; position: relative; min-height: 0; }
+        .chart-wrap canvas { position: absolute; inset: 0; }
+
+        /* ═══════════════ CLINICAL PROFILE ═══════════════ */
+        .clinical-profile {
+            flex-shrink: 0;
+            padding: 5px 10px 6px;
+            border-top: 1px solid var(--border);
+            background: var(--bg-alt);
+            font-size: var(--f-md);
+        }
+
+        .cp-row { color: var(--text); margin-bottom: 3px; font-weight: 700; font-size: var(--f-base); }
+        .cp-row strong { color: var(--text); }
+
+        .conditions-box {
+            margin-top: 3px;
+            border: 1px solid var(--border); border-radius: 2px;
+            padding: 6px 8px; background: var(--bg);
+            font-size: var(--f-base);
+            display: flex; flex-direction: column; gap: 4px; align-items: stretch;
+            min-height: 24px;
+        }
+
+        .condition-tag {
+            display: flex; align-items: center; gap: 6px;
+            font-size: var(--f-sm);
+            font-family: var(--mono);
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 0 0 2px 0;
+            border: 1px solid var(--border);
+            background: var(--bg-alt);
+            white-space: nowrap;
+        }
+        .condition-tag.sev-normal  { background: #f0fdf4; border-color: #bbf7d0; color: var(--green); }
+        .condition-tag.sev-mild    { background: #fefce8; border-color: #fde68a; color: var(--news-yellow); }
+        .condition-tag.sev-moderate{ background: #fff7ed; border-color: #fed7aa; color: var(--news-orange); }
+        .condition-tag.sev-critical{ background: #fee2e2; border-color: #fca5a5; color: var(--red); }
+
+        .cond-icon { font-style: normal; font-size: 1.1em; }
+        .cond-sev-label {
+            font-weight: 800;
+            font-size: var(--f-sm);
+            margin-right: 1px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* ═══════════════ VITALS ═══════════════ */
+        .vitals-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow-y: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .vital-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 12px;
+            border-bottom: 1px solid var(--border);
+            flex: 1;
+            min-height: 38px;
+            max-height: 68px;
+        }
+        .vital-name   { font-weight: 700; font-size: var(--f-md); color: var(--text); }
+        .vital-normal { font-size: var(--f-xs); color: var(--text); margin-top: 1px; opacity: 0.65; }
+        .vital-value-wrap { text-align: right; }
+        .vital-value {
+            font-family: var(--mono); font-size: var(--f-3xl); font-weight: 700;
+            color: var(--text);
+            border-bottom: 2px solid var(--border-dark);
+            padding-bottom: 1px; display: inline-block; min-width: clamp(52px, 5.5vw, 78px);
+            transition: color 0.4s ease;
+            letter-spacing: -0.5px;
+        }
+        .vital-value.news-green  { color: var(--news-green);  border-color: var(--news-green); }
+        .vital-value.news-yellow { color: var(--news-yellow); border-color: var(--news-yellow); }
+        .vital-value.news-orange { color: var(--news-orange); border-color: var(--news-orange); }
+        .vital-value.news-red    { color: var(--news-red);    border-color: var(--news-red); }
+
+        .vital-unit { font-size: var(--f-xs); color: var(--text); margin-top: 2px; font-weight: 600; }
+
+        .nibp-entry-wrap { display: flex; align-items: center; gap: 5px; }
+        .nibp-input {
+            font-family: var(--mono); font-size: var(--f-3xl); font-weight: 700;
+            color: var(--text); width: clamp(52px, 5.5vw, 78px);
+            border: none; border-bottom: 2px solid var(--border-dark);
+            outline: none; background: transparent;
+            text-align: right; padding-bottom: 1px;
+            letter-spacing: -0.5px;
+        }
+        .nibp-input::placeholder { color: var(--text); }
+        .nibp-save {
+            width: 22px; height: 22px;
+            border: 1px solid var(--border); border-radius: 50%;
+            background: var(--bg); cursor: pointer;
+            font-size: var(--f-xs); color: var(--text);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: all 0.15s;
+        }
+        .nibp-save:hover { background: #dcfce7; color: var(--green); border-color: var(--green); }
+        .nibp-saved { color: var(--green); font-size: var(--f-xs); font-weight: 700; margin-top: 2px; display: none; }
+
+        /* ═══════════════ CRITICALITY ═══════════════ */
+        .criticality-box {
+            flex-shrink: 0;
+            display: flex; flex-direction: column;
+            padding: 6px 12px 8px;
+            border-top: 2px solid var(--border-dark);
+            background: var(--bg-alt);
+        }
+        .criticality-label {
+            font-size: var(--f-xs); color: var(--text); font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 5px;
+        }
+        
+        .btn-forecast {
+            width: 100%; padding: 6px 10px;
+            border: 1.5px solid var(--border-dark); border-radius: 4px;
+            background: var(--bg); cursor: pointer;
+            font-size: var(--f-sm); font-family: var(--sans); font-weight: 700;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            color: var(--text);
+            transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.2s;
+        }
+        .btn-forecast:hover:not(:disabled) { background: #e0e7ff; border-color: var(--blue); color: var(--blue); }
+        .btn-forecast:disabled,
+        .btn-forecast[aria-disabled="true"] {
+            opacity: 0.38;
+            cursor: not-allowed;
+            background: var(--bg-alt);
+            border-color: var(--border);
+            color: var(--text);
+        }
+
+        .nibp-pending-notice {
+            font-size: var(--f-xs);
+            color: var(--news-orange);
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 5px;
+            display: none;
+        }
+
+        /* ═══════════════ HOSPITAL COLUMN ═══════════════ */
+        .hospital-name-bar {
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: center; gap: 7px;
+            flex-shrink: 0;
+        }
+        .hospital-name-text {
+            font-size: var(--f-xl); font-weight: 800;
+            color: var(--text); text-align: center;
+            cursor: text;
+        }
+        .hospital-name-text.placeholder { color: var(--text); font-weight: 400; font-size: var(--f-md); font-style: italic; }
+        .hospital-name-input {
+            font-size: var(--f-lg); font-weight: 800;
+            font-family: var(--sans); color: var(--text);
+            border: none; border-bottom: 2px solid var(--blue);
+            outline: none; background: transparent;
+            text-align: center; width: 100%; display: none;
+        }
+        .btn-edit-hospital {
+            border: none; background: none;
+            cursor: pointer; color: var(--text);
+            font-size: var(--f-md); padding: 2px 4px;
+            border-radius: 3px; flex-shrink: 0;
+            transition: color 0.15s;
+        }
+        .btn-edit-hospital:hover { color: var(--blue); }
+
+        .er-section { border-bottom: 1px solid var(--border); flex-shrink: 0; }
+        .er-section.grow { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+        .er-header {
+            padding: 5px 14px; font-size: var(--f-xs); font-weight: 800;
+            text-transform: uppercase; letter-spacing: 1.1px;
+            background: var(--bg-header); border-bottom: 1px solid var(--border);
+            color: var(--text);
+        }
+        .er-body { padding: 6px 14px; font-size: var(--f-md); }
+        .er-body.grow { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-height: 0; padding: 0; }
+        .er-body p { margin: 3px 0; color: var(--text); line-height: 1.65; }
+        .er-body p.muted { color: var(--text); font-style: italic; font-size: var(--f-md); }
+        .text-green { color: var(--green); font-weight: 700; }
+        .text-red   { color: var(--red);   font-weight: 700; }
+        .text-blue  { color: var(--blue);  font-weight: 800; }
+
+        .assign-row {
+            display: flex; justify-content: space-between; align-items: baseline;
+            margin: 2px 0; font-size: var(--f-sm);
+        }
+        .assign-label { color: var(--text); font-weight: 700; }
+        .assign-value { font-family: var(--mono); color: var(--text); font-size: var(--f-sm); }
+
+        .triage-badge {
+            display: inline-block;
+            font-size: var(--f-xs); font-weight: 800;
+            padding: 2px 9px; border-radius: 10px;
+            background: #e5e7eb; color: var(--text);
+            font-family: var(--mono); letter-spacing: 0.3px;
+        }
+
+        /* ═══════════════ PRE-ARRIVAL INSTRUCTIONS & ORDERS ═══════════════ */
+        .pre-arrival-scroll {
+            flex: 1; overflow-y: auto; padding: 6px 10px; min-height: 0;
+        }
+        .instr-section-title {
+            font-weight: 800; font-size: var(--f-xs);
+            text-transform: uppercase; letter-spacing: 0.8px;
+            color: var(--blue); display: block;
+            margin: 4px 0 3px;
+        }
+        .instr-section-title:first-child { margin-top: 0; }
+
+        .checklist-item {
+            display: flex; align-items: flex-start; gap: 6px;
+            padding: 3px 0;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+        }
+        .checklist-item:last-child { border-bottom: none; }
+        .checklist-item input[type="checkbox"] {
+            margin-top: 2px; flex-shrink: 0;
+            width: 13px; height: 13px;
+            cursor: pointer; accent-color: var(--blue);
+        }
+        .checklist-label {
+            font-size: var(--f-xs); line-height: 1.55; color: var(--text);
+            transition: color 0.2s, text-decoration 0.2s;
+        }
+        .checklist-item.checked .checklist-label {
+            color: #aaa;
+            text-decoration: line-through;
+        }
+        .checklist-item.priority-critical .checklist-label { color: var(--red); font-weight: 600; }
+        .checklist-item.priority-critical.checked .checklist-label { color: #ccc; }
+        .checklist-item.priority-high .checklist-label { color: var(--news-orange); }
+        .checklist-item.priority-high.checked .checklist-label { color: #ccc; }
+
+        .pre-arrival-waiting {
+            padding: 6px 10px;
+            font-style: italic; font-size: var(--f-sm); color: var(--text);
+        }
+
+        /* ═══════════════ PARAMEDIC NOTES ═══════════════ */
+        .notes-section {
+            display: flex; flex-direction: column;
+            flex: 1; min-height: 0;
+            border-bottom: none;
+            overflow: hidden;
+        }
+        .msg-box-wrap {
+            flex: 1; display: flex; flex-direction: column;
+            padding: 7px 10px; gap: 5px; min-height: 0;
+        }
+        .msg-textarea {
+            flex: 1; resize: none;
+            border: 1px solid var(--border); border-radius: 4px;
+            padding: 6px 9px; font-size: var(--f-sm);
+            font-family: var(--sans); color: var(--text);
+            background: var(--bg); outline: none;
+            line-height: 1.55; min-height: 40px;
+            transition: border-color 0.15s;
+        }
+        .msg-textarea:focus { border-color: var(--blue); }
+        .msg-textarea::placeholder { color: var(--text); font-style: italic; }
+        .msg-footer {
+            display: flex; justify-content: flex-end; align-items: center; gap: 9px;
+            flex-shrink: 0;
+        }
+        .msg-status { font-size: var(--f-sm); color: var(--green); font-weight: 700; display: none; }
+        .btn-send {
+            display: flex; align-items: center; gap: 5px;
+            padding: 6px 16px;
+            background: var(--blue); color: #fff;
+            border: none; border-radius: 4px;
+            font-size: var(--f-sm); font-family: var(--sans); font-weight: 700;
+            cursor: pointer; letter-spacing: 0.2px;
+        }
+        .btn-send:hover { background: #1e40af; }
+        .btn-send svg { width: 13px; height: 13px; fill: #fff; }
+
+        /* ═══════════════ STANDBY BANNER ═══════════════ */
+        .standby-banner {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            z-index: 20;
+            background: #fffbeb;
+            border-bottom: 1px solid #fde68a;
+            padding: 6px 14px;
+            font-size: var(--f-md);
+            color: #92400e;
+            font-weight: 600;
+            display: flex; align-items: center; gap: 8px;
+            pointer-events: none;
+        }
+        .standby-banner .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #d97706; flex-shrink: 0;
+            animation: blink 1.4s infinite;
+        }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+        .locked-zone.active .standby-banner { display: none; }
+
+        /* ═══════════════ WAVEFORM COLUMN LAYOUT ═══════════════ */
+        .col.waves-col {
+            display: flex;
+            flex-direction: column;
+        }
+        .waves-col .wave-panels-group {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .waves-col .wave-panel {
+            flex: 1;
+            min-height: 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .waves-col .wave-panel:last-of-type { border-bottom: none; }
+
+        .vitals-col {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .hospital-col {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* GRU risk box - Used as Main Criticality Output */
+        #gruRiskBox {
+            display: none;
+            font-size: 16px; 
+            font-weight: 700;
+            font-family: var(--sans);
+            line-height: 1.5;
+            padding: 8px 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #fecaca;
+            background: #fff5f5;
+            color: #b91c1c;
+        }
+
+        #clinicalProfileName {
+            font-weight: 700;
+            font-size: var(--f-base);
+        }
+        #clinicalProfileName.profile-critical { color: var(--red); }
+        #clinicalProfileName.profile-high     { color: var(--news-orange); }
+        #clinicalProfileName.profile-moderate { color: var(--news-yellow); }
+        #clinicalProfileName.profile-stable   { color: var(--green); }
+
+        .checklist-progress {
+            font-size: var(--f-xs); color: var(--text); opacity: 0.6;
+            float: right; font-family: var(--mono); font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+<span id="acuity-value" style="display:none;"></span>
+<div id="acuity-badge" style="display:none;"></div>
+
+<div class="top-header">
+
+    <div style="display:flex;align-items:center;gap:7px;">
+        <div class="entry-form" id="entryForm">
+            <input class="pin pin-name" id="inpName" type="text"   placeholder="Name / ID">
+            <input class="pin pin-age"  id="inpAge"  type="number" placeholder="Age" min="0" max="120">
+            <select class="pin pin-sex" id="inpSex">
+                <option value="" disabled selected>M/F</option>
+                <option value="M">M</option>
+                <option value="F">F</option>
+            </select>
+            <button class="btn-enter" id="btnEnter">Enter</button>
+        </div>
+
+        <div class="patient-badge" id="patientBadge">
+            <span class="pid" id="ptId">PT-????</span>
+            <span class="sep">|</span>
+            <strong id="ptName">--</strong>
+            <span class="sep">|</span>
+            Age:&nbsp;<strong id="ptAge">--</strong>
+            <span class="sep">|</span>
+            <strong id="ptSex">--</strong>
+        </div>
+
+        <div class="amb-pill" id="topAmbId">AMB-000</div>
+
+        <button class="btn-refresh" id="btnRefresh" title="Reset monitoring">&#8635;</button>
+    </div>
+
+    <div class="header-center">AMBULATORY MONITOR</div>
+
+    <div class="header-right">
+        <span>ETA:&nbsp;<span class="eta-value">-- Min</span></span>
+        <span>Elapsed:&nbsp;<strong id="elapsedTime">00:00:00</strong></span>
+        <div class="status-pill">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Waiting...</span>
+        </div>
+        <span style="font-size:var(--f-xs)">Last:&nbsp;<span id="lastUpdate">--</span></span>
+    </div>
+</div>
+
+<div class="second-row">
+    <div class="acuity-cell" id="acuityCell">
+        Acuity Index:&nbsp;<span class="acuity-score" id="display-acuity-value">&nbsp;&nbsp;&nbsp;&nbsp;/10</span>
+        <div class="acuity-swatch" id="display-acuity-badge"></div>
+        <span id="nibpPendingAcuity" style="font-size:var(--f-xs);color:var(--news-orange);font-weight:700;margin-left:8px;display:none;">⚠ Enter NIBP to enable</span>
+    </div>
+    <!-- ── CHANGED: added onclick handlers to open ePCR and User Manual pages ── -->
+    <div class="btn-cell">
+        <button class="btn-pill" onclick="window.open('epcr.html', '_blank', 'width=920,height=780,resizable=yes')">e-PCR</button>
+    </div>
+    <div class="btn-cell">
+        <button class="btn-pill" onclick="window.open('user_manual.html', '_blank', 'width=980,height=840,resizable=yes')">User Manual</button>
+    </div>
+</div>
+
+<div class="main-grid">
+
+    <div class="locked-zone" id="lockedZone">
+
+        <div class="standby-banner">
+            <span class="dot"></span>
+            Standby — enter patient details above to begin monitoring
+        </div>
+
+        <div class="skeleton-overlay"></div>
+
+        <div class="col waves-col">
+            <div style="flex:0 0 72%;min-height:0;display:flex;flex-direction:column;border-bottom:1px solid var(--border);">
+                <div class="wave-panel">
+                    <div class="wave-label">ECG <span class="wave-unit">Y: mV &nbsp;|&nbsp; X: time (s)</span></div>
+                    <div class="chart-wrap"><canvas id="ecgChart"></canvas></div>
+                </div>
+                <div class="wave-panel">
+                    <div class="wave-label">PPG (IR) <span class="wave-unit">Y: normalized AU &nbsp;|&nbsp; X: time (s)</span></div>
+                    <div class="chart-wrap"><canvas id="ppgChart"></canvas></div>
+                </div>
+                <div class="wave-panel" style="border-bottom:none;">
+                    <div class="wave-label">Respiratory Wave <span class="wave-unit">Y: AU &nbsp;|&nbsp; X: time (s)</span></div>
+                    <div class="chart-wrap"><canvas id="rrChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="clinical-profile" style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;justify-content:flex-start;">
+                <div class="cp-row">
+                    <strong>Clinical Profile:</strong>
+                    <span id="clinicalProfileName"> --</span>
+                </div>
+                <div class="cp-row" style="margin-top:3px;"><strong>Detected Conditions:</strong></div>
+                
+                <div class="conditions-box" id="conditionsBox">
+                    <span style="color:#999;font-style:italic;font-size:var(--f-xs);">Waiting for patient data...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col vitals-col" style="border-left:1px solid var(--border);">
+
+            <div class="vitals-scroll">
+                <div class="vital-row">
+                    <div><div class="vital-name">HR:</div><div class="vital-normal">51–90 bpm</div></div>
+                    <div class="vital-value-wrap">
+                        <div class="vital-value" id="hrVal">--</div>
+                        <div class="vital-unit">bpm</div>
+                    </div>
+                </div>
+                <div class="vital-row">
+                    <div><div class="vital-name">HRV:</div><div class="vital-normal">40–45 ms</div></div>
+                    <div class="vital-value-wrap">
+                        <div class="vital-value" id="hrvVal">--</div>
+                        <div class="vital-unit">ms</div>
+                    </div>
+                </div>
+                <div class="vital-row">
+                    <div><div class="vital-name">RR:</div><div class="vital-normal">12–20 br/min</div></div>
+                    <div class="vital-value-wrap">
+                        <div class="vital-value" id="rrVal">--</div>
+                        <div class="vital-unit">br/min</div>
+                    </div>
+                </div>
+                <div class="vital-row">
+                    <div><div class="vital-name">SpO₂:</div><div class="vital-normal">90–100 %</div></div>
+                    <div class="vital-value-wrap">
+                        <div class="vital-value" id="spo2Val">--</div>
+                        <div class="vital-unit">%</div>
+                    </div>
+                </div>
+                <div class="vital-row">
+                    <div><div class="vital-name">Temp:</div><div class="vital-normal">36.1–38 °C</div></div>
+                    <div class="vital-value-wrap">
+                        <div class="vital-value" id="tempVal">--</div>
+                        <div class="vital-unit">°C</div>
+                    </div>
+                </div>
+
+                <div class="vital-row">
+                    <div>
+                        <div class="vital-name">NIBP:</div>
+                        <div class="vital-normal">100–130 mmHg</div>
+                        <div class="vital-normal" style="opacity:0.5;font-size:var(--f-xs);margin-top:1px;">manual</div>
+                    </div>
+                    <div class="vital-value-wrap">
+                        <div class="nibp-entry-wrap">
+                            <input class="nibp-input" id="nibpInput" type="text" placeholder="--" maxlength="7">
+                            <button class="nibp-save" id="nibpSave" title="Save NIBP">✓</button>
+                        </div>
+                        <div class="vital-unit">mmHg</div>
+                        <div class="nibp-saved" id="nibpSaved">✓ Saved</div>
+                    </div>
+                </div>
+            </div><div class="criticality-box">
+                <div class="criticality-label">Criticality (GRU Model):</div>
+                <div id="gruRiskBox">Waiting for sufficient vitals...</div>
+                <div class="nibp-pending-notice" id="nibpPendingCrit">⚠ Enter NIBP to unlock full forecast</div>
+                <button class="btn-forecast" id="btnForecast" disabled aria-disabled="true"
+                        title="Enter NIBP reading to enable forecast">
+                    📈 View Forecast
+                </button>
+            </div>
+        </div>
+
+    </div><div class="col hospital-col">
+
+        <div class="hospital-name-bar">
+            <span class="hospital-name-text placeholder" id="hospitalDisplay">Click to set hospital name</span>
+            <input class="hospital-name-input" id="hospitalInput" type="text" placeholder="Enter hospital name" maxlength="40">
+            <button class="btn-edit-hospital" id="btnEditHospital" title="Edit hospital name">✏</button>
+        </div>
+
+        <div class="er-section">
+            <div class="er-header">ER Feedback / Triage Sync</div>
+            <div class="er-body">
+                <div class="assign-row">
+                    <span class="assign-label">Ambulance ID:</span>
+                    <span class="assign-value" id="ambId">AMB-000</span>
+                </div>
+                <div class="assign-row">
+                    <span class="assign-label">Paramedic ID:</span>
+                    <span class="assign-value" id="t-paramedic">—</span>
+                </div>
+                <div class="assign-row">
+                    <span class="assign-label">Doctor:</span>
+                    <span class="assign-value" id="t-doctor">—</span>
+                </div>
+                <div class="assign-row">
+                    <span class="assign-label">Nurse:</span>
+                    <span class="assign-value" id="t-nurse">—</span>
+                </div>
+                <div class="assign-row">
+                    <span class="assign-label">Triage Status:</span>
+                    <span class="assign-value">
+                        <span class="triage-badge" id="triageStatus">Pending</span>
+                    </span>
+                </div>
+                <div class="assign-row">
+                    <span class="assign-label">Priority:</span>
+                    <span class="assign-value">
+                        <span class="triage-badge" id="triagePriority">—</span>
+                    </span>
+                </div>
+                <div class="assign-row">
+                    <span class="assign-label">Ward / Bed:</span>
+                    <span class="assign-value" id="t-ward-bed">— / —</span>
+                </div>
+                <div class="assign-row">
+                    <span class="assign-label">Facility/Equip:</span>
+                    <span class="assign-value" id="t-facility">—</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="er-section" style="flex:0 0 auto;display:flex;flex-direction:column;max-height:38%;">
+            <div class="er-header text-blue">
+                Pre-Arrival & Orders
+                <span class="checklist-progress" id="checklistProgress"></span>
+            </div>
+            <div id="preArrivalWaiting" class="pre-arrival-waiting">Waiting for patient profile analysis...</div>
+            <div class="pre-arrival-scroll" id="preArrivalScroll" style="display:none;"></div>
+        </div>
+
+        <div class="notes-section er-section grow">
+            <div class="er-header">Paramedic Notes</div>
+            <div class="er-body grow">
+                <div class="msg-box-wrap">
+                    <textarea class="msg-textarea" id="paramedicMsg"
+                        placeholder="Enter paramedic summary, observations, or handover notes..."></textarea>
+                    <div class="msg-footer">
+                        <span class="msg-status" id="msgStatus">✓ Sent</span>
+                        <button class="btn-send" id="btnSend">
+                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                            </svg>
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="summaryTable" style="display:none;"></div>
+
+    </div>
+
+</div><script>
+(function () {
+    'use strict';
+
+    var MQTT_BROKER = 'wss://broker.hivemq.com:8884/mqtt';
+    var TOPIC_NIBP  = 'ambulatory/nibp';
+    var TOPIC_NOTES = 'ambulatory/paramedic_notes';
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       TABLE 1 — VITAL-TO-CONDITION MAPPING (NEWS2 bands + HRV)
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var VITAL_CONDITIONS = {
+        HR: function(v) {
+            if (v <= 40)  return { label: 'Extreme Bradycardia',    icd10: 'R00.1', severity: 'severe' };
+            if (v <= 50)  return { label: 'Bradycardia',            icd10: 'R00.1', severity: 'moderate' };
+            if (v <= 90)  return { label: 'Normal Sinus Rhythm',    icd10: 'R00.0', severity: 'normal' };
+            if (v <= 110) return { label: 'Mild Tachycardia',       icd10: 'R00.0', severity: 'mild' };
+            if (v <= 130) return { label: 'Tachycardia',            icd10: 'R00.0', severity: 'moderate' };
+            return              { label: 'Severe Tachycardia',      icd10: 'R00.0', severity: 'severe' };
+        },
+        HRV: function(v) {
+            if (v < 20)  return { label: 'Severely Reduced HRV (Autonomic Failure)', icd10: 'G90.3', severity: 'severe' };
+            if (v < 40)  return { label: 'Reduced HRV (Autonomic Dysfunction)',      icd10: 'G90.3', severity: 'moderate' };
+            if (v <= 45) return { label: 'Normal HRV',                               icd10: 'R00.8', severity: 'normal' };
+            if (v <= 60) return { label: 'Elevated HRV',                             icd10: 'R00.8', severity: 'mild' };
+            return              { label: 'High HRV (Vagal Dominance)',               icd10: 'R00.8', severity: 'moderate' };
+        },
+        RR: function(v) {
+            if (v <= 8)  return { label: 'Severe Bradypnoea / Apnoea',  icd10: 'R06.00', severity: 'severe' };
+            if (v <= 11) return { label: 'Bradypnoea',                  icd10: 'R06.89', severity: 'mild' };
+            if (v <= 20) return { label: 'Normal Respiratory Rate',     icd10: 'R06.00', severity: 'normal' };
+            if (v <= 24) return { label: 'Tachypnoea',                  icd10: 'R06.00', severity: 'mild' };
+            return              { label: 'Severe Tachypnoea',           icd10: 'R06.00', severity: 'severe' };
+        },
+        SpO2: function(v) {
+            if (v <= 91) return { label: 'Severe Hypoxaemia',    icd10: 'J96.01', severity: 'severe' };
+            if (v <= 93) return { label: 'Moderate Hypoxaemia',  icd10: 'J96.01', severity: 'moderate' };
+            if (v <= 95) return { label: 'Mild Hypoxaemia',      icd10: 'J96.01', severity: 'mild' };
+            return              { label: 'Normal SpO\u2082',     icd10: 'Z00.00', severity: 'normal' };
+        },
+        Temp: function(v) {
+            if (v <= 35.0) return { label: 'Hypothermia',              icd10: 'T68',    severity: 'severe' };
+            if (v <= 36.0) return { label: 'Mild Hypothermia',         icd10: 'T68',    severity: 'mild' };
+            if (v <= 38.0) return { label: 'Normothermia',             icd10: 'Z00.00', severity: 'normal' };
+            if (v <= 39.0) return { label: 'Low-grade Pyrexia',        icd10: 'R50.9',  severity: 'mild' };
+            if (v <= 40.0) return { label: 'Pyrexia / Fever',          icd10: 'R50.9',  severity: 'moderate' };
+            return                { label: 'Hyperpyrexia',             icd10: 'R50.9',  severity: 'severe' };
+        },
+        NIBP: function(sbp) {
+            if (sbp <= 90)  return { label: 'Hypotension / Shock',   icd10: 'R03.1', severity: 'severe' };
+            if (sbp <= 100) return { label: 'Moderate Hypotension',  icd10: 'R03.1', severity: 'moderate' };
+            if (sbp <= 110) return { label: 'Mild Hypotension',      icd10: 'R03.1', severity: 'mild' };
+            if (sbp <= 219) return { label: 'Normal Blood Pressure', icd10: 'Z00.00',severity: 'normal' };
+            return                 { label: 'Hypertensive Emergency', icd10: 'I16.1', severity: 'severe' };
+        }
+    };
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       TABLE 2 — 12 CLINICAL PROFILES
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var CLINICAL_PROFILES = [
+        { name:'Cardiogenic Shock', tier:'critical',
+          match:function(v){ return (v.HR>100||v.HR<50)&&v.HRV<25&&v.SBP<=90&&v.SpO2<=94; },
+          conditions:['Tachycardia/Bradycardia','Autonomic Failure (HRV\u2193)','Hypotension','Hypoxaemia'] },
+        { name:'Septic Shock', tier:'critical',
+          match:function(v){ return v.HR>100&&v.RR>22&&(v.Temp>38.3||v.Temp<36.0)&&v.SBP<=100; },
+          conditions:['Tachycardia (SIRS)','Tachypnoea (SIRS)','Temperature Dysregulation','Hypotension (qSOFA+)'] },
+        { name:'Acute Respiratory Failure', tier:'critical',
+          match:function(v){ return v.SpO2<=91&&(v.RR>25||v.RR<=8); },
+          conditions:['Severe Hypoxaemia','Severe Respiratory Rate Derangement'] },
+        { name:'Hypertensive Emergency', tier:'critical',
+          match:function(v){ return v.SBP>=220&&(v.HR>100||v.SpO2<=94); },
+          conditions:['Hypertensive Emergency','Tachycardia','Hypoxaemia'] },
+        { name:'Sepsis (No Shock)', tier:'high',
+          match:function(v){ return v.HR>100&&v.RR>20&&v.Temp>38.3&&v.SBP>100; },
+          conditions:['Tachycardia (SIRS)','Tachypnoea (SIRS)','Pyrexia/Fever (SIRS)'] },
+        { name:'Acute Coronary Syndrome', tier:'high',
+          match:function(v){ return v.HR>100&&v.HRV<30&&v.SpO2<=95&&v.SpO2>91; },
+          conditions:['Tachycardia','Reduced HRV (Autonomic Stress)','Mild Hypoxaemia'] },
+        { name:'Severe Asthma / COPD Exacerbation', tier:'high',
+          match:function(v){ return v.RR>22&&v.SpO2<=94&&v.HR>100&&v.Temp<=38.3; },
+          conditions:['Severe Tachypnoea','Hypoxaemia','Tachycardia (Compensatory)'] },
+        { name:'Hypothermic Collapse', tier:'high',
+          match:function(v){ return v.Temp<=35.0&&v.HR<=50&&v.HRV<30; },
+          conditions:['Hypothermia','Bradycardia','Autonomic Suppression (HRV\u2193)'] },
+        { name:'Compensated Shock / Pre-Shock', tier:'moderate',
+          match:function(v){ return v.HR>100&&v.SBP>90&&v.SBP<=110&&v.SpO2<=95; },
+          conditions:['Tachycardia','Borderline Hypotension','Mild Hypoxaemia'] },
+        { name:'Autonomic Dysregulation', tier:'moderate',
+          match:function(v){ return v.HRV<20&&v.SBP>90&&v.SpO2>94; },
+          conditions:['Severe HRV Suppression (Autonomic Failure)','Haemodynamically Stable'] },
+        { name:'Pyrexia / Inflammatory State', tier:'moderate',
+          match:function(v){ return v.Temp>38.3&&v.HR>90&&v.SBP>100&&v.SpO2>94; },
+          conditions:['Pyrexia','Tachycardia (Inflammatory)'] },
+        { name:'Clinically Stable', tier:'stable',
+          match:function(v){ return true; },
+          conditions:['No critical derangement detected'] }
+    ];
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       TABLE 3 — PRE-ARRIVAL INSTRUCTIONS
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var PROFILE_INSTRUCTIONS = {
+        'Cardiogenic Shock': {
+            paramedic: [
+                { text:'Establish IV access \u00d7 2; titrate cautious fluid bolus 250 mL if SBP <90 \u2014 avoid fluid overload (AHA ACLS 2020)', priority:'critical' },
+                { text:'Administer high-flow O\u2082 15 L/min via NRB mask; target SpO\u2082 \u226594% (BTS Oxygen Guidelines)', priority:'critical' },
+                { text:'Monitor 12-lead ECG continuously; prepare for immediate defibrillation if VF/VT onset', priority:'high' }
+            ],
+            hospital: [
+                { text:'Activate cardiac catheterisation lab (STEMI/cardiogenic shock protocol) \u2014 ESC 2023', priority:'critical' },
+                { text:'Initiate vasopressor support: norepinephrine 0.1\u20130.2 mcg/kg/min titrated to MAP \u226565 mmHg', priority:'high' },
+                { text:'Order urgent ECHO, troponin, BNP, ABG; prepare IABP/Impella if refractory \u2014 NICE NG185', priority:'' }
+            ]
+        },
+        'Septic Shock': {
+            paramedic: [
+                { text:'Administer IV crystalloid 30 mL/kg over 3 h; reassess lactate after each bolus (Surviving Sepsis 2021)', priority:'critical' },
+                { text:'Obtain blood cultures \u00d7 2 peripherally before antibiotic administration if feasible', priority:'high' },
+                { text:'Supplement O\u2082 to target SpO\u2082 \u226594%; apply CPAP if respiratory failure develops', priority:'' }
+            ],
+            hospital: [
+                { text:'Initiate broad-spectrum IV antibiotics within 1 h of sepsis recognition \u2014 Surviving Sepsis 2021', priority:'critical' },
+                { text:'Norepinephrine first-line vasopressor; target MAP \u226565 mmHg; add vasopressin if refractory', priority:'high' },
+                { text:'Order serum lactate, blood cultures \u00d7 2, FBC, CRP, PCT, ABG, U&E, LFTs \u2014 NICE NG51', priority:'' }
+            ]
+        },
+        'Acute Respiratory Failure': {
+            paramedic: [
+                { text:'High-flow O\u2082 15 L/min NRB; prepare BVM; position patient upright at 30\u201345\u00b0 (BTS Oxygen)', priority:'critical' },
+                { text:'Consider early BVM ventilation if GCS <8 or SpO\u2082 unresponsive to O\u2082 (AHA ACLS 2020)', priority:'critical' },
+                { text:'Alert receiving hospital: ETI/RSI team required on arrival \u2014 ATLS 10th Ed.', priority:'high' }
+            ],
+            hospital: [
+                { text:'Prepare for immediate RSI/intubation if SpO\u2082 <88% on 15 L O\u2082 \u2014 BTS/ERS Guideline', priority:'critical' },
+                { text:'Order ABG (pH, PaO\u2082, PaCO\u2082), CXR, FBC, D-dimer/CTPA if PE suspected \u2014 NICE NG115', priority:'' },
+                { text:'Trial NIV (BiPAP) if conscious and cooperative; reassess after 1 h \u2014 NICE NG38', priority:'' }
+            ]
+        },
+        'Hypertensive Emergency': {
+            paramedic: [
+                { text:'Position semi-recumbent; avoid sudden positional changes; keep patient calm and minimise exertion', priority:'high' },
+                { text:'Do NOT aggressively lower BP in the field \u2014 target \u226425% reduction over first hour (ESC 2018)', priority:'critical' },
+                { text:'Monitor neurological status Q5 min; note any focal deficit, headache, visual change (ATLS)', priority:'high' }
+            ],
+            hospital: [
+                { text:'IV labetalol or nicardipine for controlled BP reduction; avoid sublingual nifedipine \u2014 ESC 2018', priority:'high' },
+                { text:'Order urgent CT head (rule out haemorrhagic stroke), troponin, echo, U&E, urinalysis', priority:'' },
+                { text:'Alert stroke/neurology team if focal neurology present \u2014 NICE NG128', priority:'' }
+            ]
+        },
+        'Sepsis (No Shock)': {
+            paramedic: [
+                { text:'Establish IV access; administer crystalloid 500 mL bolus if signs of poor perfusion (Surviving Sepsis 2021)', priority:'high' },
+                { text:'Monitor temperature, HR, and RR every 5 min; alert ER of suspected sepsis (NEWS2 \u22655)', priority:'' },
+                { text:'Supplement O\u2082 to maintain SpO\u2082 \u226594% (BTS Oxygen Guidelines)', priority:'' }
+            ],
+            hospital: [
+                { text:'Blood cultures \u00d7 2 then IV antibiotics within 1 h \u2014 Surviving Sepsis Campaign 2021', priority:'high' },
+                { text:'Fluid resuscitation 30 mL/kg crystalloid if lactate >2 mmol/L or SBP <100 mmHg', priority:'' },
+                { text:'Order sepsis bundle: FBC, CRP, PCT, U&E, LFT, coagulation screen, chest X-ray \u2014 NICE NG51', priority:'' }
+            ]
+        },
+        'Acute Coronary Syndrome': {
+            paramedic: [
+                { text:'Administer aspirin 300 mg PO (if no allergy/contraindication) \u2014 AHA ACLS 2020', priority:'critical' },
+                { text:'Apply 12-lead ECG; transmit to receiving ER for early STEMI/NSTEMI identification', priority:'high' },
+                { text:'Sublingual GTN 0.4 mg if SBP >100 mmHg; O\u2082 only if SpO\u2082 <94% (ESC 2020 ACS)', priority:'' }
+            ],
+            hospital: [
+                { text:'Activate PPCI pathway if STEMI confirmed; door-to-balloon time target <90 min \u2014 ESC 2023', priority:'critical' },
+                { text:'Dual antiplatelet therapy: aspirin + ticagrelor 180 mg or prasugrel (per protocol)', priority:'high' },
+                { text:'Order troponin T/I, 12-lead ECG serial, ECHO, CBC, coagulation \u2014 ESC ACS Guidelines', priority:'' }
+            ]
+        },
+        'Severe Asthma / COPD Exacerbation': {
+            paramedic: [
+                { text:'Salbutamol 5 mg nebulised back-to-back \u00d7 3; add ipratropium 0.5 mg nebulised (BTS/SIGN 2019)', priority:'critical' },
+                { text:'O\u2082 target SpO\u2082 94\u201398% (88\u201392% in known COPD) \u2014 BTS Oxygen Guidelines', priority:'high' },
+                { text:'Position upright; alert ER: severe exacerbation, consider CPAP/NIV on arrival \u2014 GINA 2023', priority:'' }
+            ],
+            hospital: [
+                { text:'IV hydrocortisone 100 mg stat or oral prednisolone 40 mg \u2014 BTS/SIGN 2019', priority:'high' },
+                { text:'IV magnesium sulphate 2 g over 20 min if life-threatening/severe \u2014 GINA 2023', priority:'high' },
+                { text:'Consider ICU/HDU if PEFR <33% predicted or silent chest; ABG, CXR, FBC \u2014 NICE NG80', priority:'' }
+            ]
+        },
+        'Hypothermic Collapse': {
+            paramedic: [
+                { text:'Handle with extreme care \u2014 ventricular fibrillation risk from any physical jostling (ATLS 10th)', priority:'critical' },
+                { text:'Passive external rewarming: remove wet clothing, insulate, warm IV fluids 42\u00b0C if available', priority:'high' },
+                { text:'Cardiac monitoring mandatory; defer defibrillation until core Temp >30\u00b0C \u2014 AHA ACLS 2020', priority:'high' }
+            ],
+            hospital: [
+                { text:'Active internal rewarming: warmed IV fluids, warm humidified O\u2082, bladder irrigation \u2014 ATLS', priority:'high' },
+                { text:'Monitor ECG for J-waves (Osborn waves) and arrhythmia; consider ECMO if Temp <28\u00b0C', priority:'' },
+                { text:'Order core temperature (oesophageal/rectal), ABG, glucose, serum electrolytes, coagulation', priority:'' }
+            ]
+        },
+        'Compensated Shock / Pre-Shock': {
+            paramedic: [
+                { text:'IV access \u00d7 2; cautious fluid challenge 500 mL crystalloid; reassess BP and HR after (ATLS)', priority:'high' },
+                { text:'Identify and treat reversible cause: haemorrhage, tension pneumothorax, anaphylaxis', priority:'critical' },
+                { text:'Elevate legs 15\u00b0 if no head/spinal injury; O\u2082 15 L/min NRB; continuous monitoring', priority:'' }
+            ],
+            hospital: [
+                { text:'Serial lactate measurements; target <2 mmol/L with resuscitation \u2014 Surviving Sepsis 2021', priority:'' },
+                { text:'Identify shock aetiology: ECHO, CXR, USS, FAST (trauma) \u2014 ATLS 10th Ed.', priority:'' },
+                { text:'Vasopressors if fluid-unresponsive; type-and-cross match; alert surgical/ICU team', priority:'' }
+            ]
+        },
+        'Autonomic Dysregulation': {
+            paramedic: [
+                { text:'Monitor HR and rhythm continuously; note any syncope, near-syncope, or position-related symptoms', priority:'' },
+                { text:'Assess medication history for \u03b2-blockers, antiarrhythmics, or autonomic agents', priority:'' },
+                { text:'Maintain supine position if symptomatic; avoid sudden postural changes', priority:'' }
+            ],
+            hospital: [
+                { text:'Refer cardiology for HRV analysis, autonomic function testing, Holter monitoring \u2014 NICE NG185', priority:'' },
+                { text:'Consider tilt-table test if orthostatic hypotension suspected; 12-lead ECG and echocardiography', priority:'' },
+                { text:"Investigate for underlying causes: diabetes, Parkinson\u2019s, amyloidosis \u2014 NICE NG28", priority:'' }
+            ]
+        },
+        'Pyrexia / Inflammatory State': {
+            paramedic: [
+                { text:'Administer paracetamol 1 g PO/IV if Temp >38.5\u00b0C and no contraindication (NICE)', priority:'' },
+                { text:'Increase IV fluid rate to maintain hydration; reassess temperature every 15 min', priority:'' },
+                { text:'Monitor for deterioration to sepsis pattern: rising HR, falling BP, altered consciousness', priority:'high' }
+            ],
+            hospital: [
+                { text:'Blood cultures before empirical antibiotics if bacterial source suspected \u2014 NICE NG51', priority:'' },
+                { text:'Sepsis screen: FBC, CRP, PCT, U&E; imaging per suspected source (CXR, USS, CT)', priority:'' },
+                { text:'Sepsis 6 bundle within 1 h if NEWS2 \u22655 or clinical concern \u2014 Surviving Sepsis 2021', priority:'' }
+            ]
+        },
+        'Clinically Stable': {
+            paramedic: [
+                { text:'Maintain monitoring; reassess full vital set every 5 min during transport', priority:'' },
+                { text:'Establish IV access as precaution; document all observations in e-PCR', priority:'' },
+                { text:'Alert ER of arrival ETA and current NEWS2 score for triage preparation', priority:'' }
+            ],
+            hospital: [
+                { text:'Full clinical assessment in ED; repeat NEWS2 within 30 min of arrival \u2014 NICE NEWS2', priority:'' },
+                { text:'Routine bloods: FBC, U&E, glucose; ECG if age >50 or cardiac history', priority:'' },
+                { text:'Reassess for clinical deterioration; escalate per local NEWS2 escalation policy', priority:'' }
+            ]
+        }
+    };
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       RULE ENGINE
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    function runClinicalRuleEngine(vitals) {
+        var v = {
+            HR:   parseFloat(vitals.HR)   || NaN,
+            HRV:  parseFloat(vitals.HRV)  || NaN,
+            RR:   parseFloat(vitals.RR)   || NaN,
+            SpO2: parseFloat(vitals.SpO2) || NaN,
+            Temp: parseFloat(vitals.Temp) || NaN,
+            SBP:  parseFloat(vitals.SBP || vitals.NIBP) || NaN
+        };
+
+        var matchedProfile = null;
+        for (var i = 0; i < CLINICAL_PROFILES.length; i++) {
+            var p = CLINICAL_PROFILES[i];
+            var hasMinVitals = !isNaN(v.HR) && !isNaN(v.RR) && !isNaN(v.SpO2);
+            var shockProfileNeedsNibp = ['Cardiogenic Shock','Septic Shock','Hypertensive Emergency',
+                'Sepsis (No Shock)','Compensated Shock / Pre-Shock'].indexOf(p.name) >= 0;
+            if (shockProfileNeedsNibp && isNaN(v.SBP)) continue;
+            if (!hasMinVitals) continue;
+            try { if (p.match(v)) { matchedProfile = p; break; } } catch(e) {}
+        }
+
+        var conditionTags = [];
+        var vitalMap = [
+            ['HR',   v.HR,   'HR'],
+            ['HRV',  v.HRV,  'HRV'],
+            ['RR',   v.RR,   'RR'],
+            ['SpO\u2082', v.SpO2, 'SpO2'],
+            ['Temp', v.Temp, 'Temp'],
+            ['NIBP', v.SBP,  'NIBP']
+        ];
+        vitalMap.forEach(function(pair) {
+            var display = pair[0], val = pair[1], key = pair[2];
+            if (!isNaN(val) && VITAL_CONDITIONS[key]) {
+                var cond = VITAL_CONDITIONS[key](val);
+                conditionTags.push({ vital: display, label: cond.label, severity: cond.severity });
+            }
+        });
+
+        return { profile: matchedProfile, conditionTags: conditionTags };
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       CONDITION ICON + SEVERITY LABEL MAPPING
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var SEV_ICON = {
+        normal:   '🟢',
+        mild:     '🟡',
+        moderate: '🟠',
+        severe:   '🔴'
+    };
+    var SEV_TAG_CLASS = {
+        normal:   'sev-normal',
+        mild:     'sev-mild',
+        moderate: 'sev-moderate',
+        severe:   'sev-critical'
+    };
+    var SEV_LABEL_TEXT = {
+        normal:   '',
+        mild:     'MILD',
+        moderate: 'MOD',
+        severe:   'SEVERE'
+    };
+
+    var TIER_LABEL = {
+        critical: '\u26d4 CRITICAL',
+        high:     '\u26a0 HIGH',
+        moderate: '\u25c8 MODERATE',
+        stable:   '\u2713 STABLE'
+    };
+    var TIER_COLOR = {
+        critical: 'profile-critical',
+        high:     'profile-high',
+        moderate: 'profile-moderate',
+        stable:   'profile-stable'
+    };
+    var INSTR_TIER = {
+        critical: 'critical',
+        high:     'high',
+        moderate: '',
+        stable:   ''
+    };
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       CHECKLIST / ORDERS GENERATION
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var _checklistTotal = 0;
+    
+    // Store the last profile name to prevent destroying the DOM every second
+    var _lastProfileName = undefined; 
+
+    function updateChecklistProgress() {
+        var el = document.getElementById('checklistProgress');
+        var checkedCount = document.querySelectorAll('#preArrivalScroll .checklist-item.checked').length;
+        if (el && _checklistTotal > 0) {
+            el.textContent = checkedCount + '/' + _checklistTotal + ' done';
+        } else if (el) {
+            el.textContent = '';
+        }
+    }
+
+    function buildChecklist(profile) {
+        var scrollEl   = document.getElementById('preArrivalScroll');
+        var waitingEl  = document.getElementById('preArrivalWaiting');
+        var progressEl = document.getElementById('checklistProgress');
+
+        if (!profile) {
+            scrollEl.style.display  = 'none';
+            waitingEl.style.display = 'block';
+            if (progressEl) progressEl.textContent = '';
+            return;
+        }
+        var instrData = PROFILE_INSTRUCTIONS[profile.name];
+        if (!instrData) {
+            scrollEl.style.display  = 'none';
+            waitingEl.style.display = 'block';
+            return;
+        }
+
+        waitingEl.style.display = 'none';
+        scrollEl.style.display  = 'block';
+        scrollEl.innerHTML      = '';
+
+        _checklistTotal   = 0;
+
+        function addChecklistSection(title, items, sectionPriority) {
+            var titleEl = document.createElement('span');
+            titleEl.className   = 'instr-section-title';
+            titleEl.textContent = title;
+            scrollEl.appendChild(titleEl);
+            
+            var newsParamedicItem = { text: 'Calculate NEWS2 score and escalate if \u2265 7 (National Early Warning Score)', priority: 'high' };
+            var fullItems = [newsParamedicItem].concat(items);
+
+            fullItems.forEach(function(item) {
+                _checklistTotal++;
+                var div = document.createElement('div');
+                var prio = item.priority || sectionPriority || '';
+                div.className = 'checklist-item' + (prio ? ' priority-' + prio : '');
+
+                var cb = document.createElement('input');
+                cb.type = 'checkbox';
+
+                var lbl = document.createElement('span');
+                lbl.className   = 'checklist-label';
+                lbl.textContent = item.text;
+
+                div.appendChild(cb);
+                div.appendChild(lbl);
+
+                function toggle() {
+                    var isChecked = cb.checked;
+                    if (isChecked) {
+                        div.classList.add('checked');
+                        cb.setAttribute('checked', 'checked');
+                    } else {
+                        div.classList.remove('checked');
+                        cb.removeAttribute('checked'); 
+                    }
+                    updateChecklistProgress();
+                }
+                cb.addEventListener('change', toggle);
+                div.addEventListener('click', function(e) {
+                    if (e.target !== cb) { cb.checked = !cb.checked; toggle(); }
+                });
+
+                scrollEl.appendChild(div);
+            });
+        }
+
+        function addTextSection(title, items, sectionPriority) {
+            var titleEl = document.createElement('span');
+            titleEl.className   = 'instr-section-title';
+            titleEl.textContent = title;
+            scrollEl.appendChild(titleEl);
+            
+            var newsHospitalItem = { text: 'Activate local NEWS2 clinical escalation protocol based on aggregate vitals', priority: 'high' };
+            var fullItems = [newsHospitalItem].concat(items);
+
+            fullItems.forEach(function(item) {
+                var div = document.createElement('div');
+                var prio = item.priority || sectionPriority || '';
+                div.className = 'checklist-item' + (prio ? ' priority-' + prio : '');
+                
+                var bullet = document.createElement('span');
+                bullet.textContent = '• ';
+                bullet.style.marginRight = '5px';
+                bullet.style.fontWeight = 'bold';
+
+                var lbl = document.createElement('span');
+                lbl.className   = 'checklist-label';
+                lbl.textContent = item.text;
+
+                div.appendChild(bullet);
+                div.appendChild(lbl);
+                scrollEl.appendChild(div);
+            });
+        }
+
+        addChecklistSection('Paramedic Actions (Pre-Arrival)', instrData.paramedic, INSTR_TIER[profile.tier]);
+        addTextSection('Hospital Clinical Orders', instrData.hospital, '');
+
+        updateChecklistProgress();
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       UI UPDATERS
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    function updateClinicalDisplay(result) {
+        var profileNameEl   = document.getElementById('clinicalProfileName');
+        var conditionsBoxEl = document.getElementById('conditionsBox');
+        if (!profileNameEl || !conditionsBoxEl) return;
+
+        var profile = result.profile;
+        var currentProfileName = profile ? profile.name : null;
+
+        if (profile) {
+            ['profile-critical','profile-high','profile-moderate','profile-stable'].forEach(function(c){
+                profileNameEl.classList.remove(c);
+            });
+            profileNameEl.classList.add(TIER_COLOR[profile.tier] || '');
+            profileNameEl.textContent = ' ' + TIER_LABEL[profile.tier] + ' \u2014 ' + profile.name;
+        } else {
+            profileNameEl.textContent = ' Awaiting sufficient vitals...';
+            profileNameEl.className   = '';
+        }
+
+        conditionsBoxEl.innerHTML = '';
+        if (result.conditionTags.length === 0) {
+            var ph = document.createElement('span');
+            ph.style.cssText = 'color:#999;font-style:italic;font-size:var(--f-xs);';
+            ph.textContent = profile ? 'All monitored parameters within normal limits.' : 'Insufficient vitals for assessment.';
+            conditionsBoxEl.appendChild(ph);
+        } else {
+            result.conditionTags.forEach(function(tag) {
+                var span = document.createElement('span');
+                span.className = 'condition-tag ' + (SEV_TAG_CLASS[tag.severity] || 'sev-normal');
+
+                var icon = document.createElement('em');
+                icon.className   = 'cond-icon';
+                icon.textContent = SEV_ICON[tag.severity] || '\u2713';
+
+                span.appendChild(icon);
+
+                if (tag.severity !== 'normal' && SEV_LABEL_TEXT[tag.severity]) {
+                    var sev = document.createElement('span');
+                    sev.className   = 'cond-sev-label';
+                    sev.textContent = SEV_LABEL_TEXT[tag.severity] + ':';
+                    span.appendChild(sev);
+                }
+
+                var txt = document.createTextNode(' ' + tag.vital + ' \u2014 ' + tag.label);
+                span.appendChild(txt);
+                conditionsBoxEl.appendChild(span);
+            });
+        }
+
+        // Only rebuild the DOM if the profile has ACTUALLY changed.
+        // Doing this blindly every 200ms wipes out user checks!
+        if (currentProfileName !== _lastProfileName) {
+            buildChecklist(profile);
+            _lastProfileName = currentProfileName;
+        }
+    }
+
+    window.runClinicalEngine = function(vitals) {
+        var result = runClinicalRuleEngine(vitals);
+        updateClinicalDisplay(result);
+        window.CURRENT_PROFILE_TIER = result.profile ? result.profile.tier : null;
+    };
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       FLAT-LINE PLACEHOLDERS
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var WAVE_COLORS = { ecgChart: '#22c55e', ppgChart: '#3b82f6', rrChart: '#d97706' };
+
+    function drawFlatLine(id) {
+        var c = document.getElementById(id);
+        if (!c) return;
+        var W = c.parentElement.clientWidth  || 300;
+        var H = c.parentElement.clientHeight || 100;
+        c.width = W; c.height = H;
+        var ctx = c.getContext('2d');
+        ctx.clearRect(0, 0, W, H);
+        ctx.beginPath();
+        ctx.strokeStyle = WAVE_COLORS[id];
+        ctx.globalAlpha = 0.22;
+        ctx.lineWidth   = 1.5;
+        ctx.setLineDash([7, 5]);
+        ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2);
+        ctx.stroke();
+    }
+
+    requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+            drawFlatLine('ecgChart');
+            drawFlatLine('ppgChart');
+            drawFlatLine('rrChart');
+        });
+    });
+
+    function generateId() {
+        var count = parseInt(sessionStorage.getItem('pat_counter') || '0', 10) + 1;
+        sessionStorage.setItem('pat_counter', String(count));
+        return 'PAT-' + String(count).padStart(3, '0');
+    }
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       NEWS2 VITAL COLORING
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var NEWS_CLASS = ['news-green', 'news-yellow', 'news-orange', 'news-red'];
+
+    function newsHR(v) {
+        var n=parseFloat(v); if(isNaN(n))return'';
+        if(n<=40)return NEWS_CLASS[3]; if(n<=50)return NEWS_CLASS[2];
+        if(n<=90)return NEWS_CLASS[0]; if(n<=110)return NEWS_CLASS[1];
+        if(n<=130)return NEWS_CLASS[2]; return NEWS_CLASS[3];
+    }
+    function newsRR(v) {
+        var n=parseFloat(v); if(isNaN(n))return'';
+        if(n<=8)return NEWS_CLASS[3]; if(n<=11)return NEWS_CLASS[1];
+        if(n<=20)return NEWS_CLASS[0]; if(n<=24)return NEWS_CLASS[1];
+        return NEWS_CLASS[3];
+    }
+    function newsSpo2(v) {
+        var n=parseFloat(v); if(isNaN(n))return'';
+        if(n<=91)return NEWS_CLASS[3]; if(n<=93)return NEWS_CLASS[2];
+        if(n<=95)return NEWS_CLASS[1]; return NEWS_CLASS[0];
+    }
+    function newsTemp(v) {
+        var n=parseFloat(v); if(isNaN(n))return'';
+        if(n<=35.0)return NEWS_CLASS[3]; if(n<=36.0)return NEWS_CLASS[1];
+        if(n<=38.0)return NEWS_CLASS[0]; if(n<=39.0)return NEWS_CLASS[1];
+        return NEWS_CLASS[2];
+    }
+    function newsSBP(v) {
+        var n=parseFloat(v); if(isNaN(n))return'';
+        if(n<=90)return NEWS_CLASS[3]; if(n<=100)return NEWS_CLASS[2];
+        if(n<=110)return NEWS_CLASS[1]; if(n<=219)return NEWS_CLASS[0];
+        return NEWS_CLASS[3];
+    }
+    function newsHRV(v) {
+        var n=parseFloat(v); if(isNaN(n))return'';
+        if(n<20)return NEWS_CLASS[3]; if(n<40)return NEWS_CLASS[2];
+        if(n<=45)return NEWS_CLASS[0]; if(n<=60)return NEWS_CLASS[1];
+        return NEWS_CLASS[2];
+    }
+
+    function applyNewsColor(elId, colorFn, val) {
+        var el = document.getElementById(elId);
+        if (!el) return;
+        NEWS_CLASS.forEach(function(c){ el.classList.remove(c); });
+        var cls = colorFn(val);
+        if (cls) el.classList.add(cls);
+    }
+
+    window.applyNewsColors = function(vitals) {
+        if (!vitals) return;
+        if (vitals.HR   !== undefined) applyNewsColor('hrVal',   newsHR,   vitals.HR);
+        if (vitals.HRV  !== undefined) applyNewsColor('hrvVal',  newsHRV,  vitals.HRV);
+        if (vitals.RR   !== undefined) applyNewsColor('rrVal',   newsRR,   vitals.RR);
+        if (vitals.SpO2 !== undefined) applyNewsColor('spo2Val', newsSpo2, vitals.SpO2);
+        if (vitals.Temp !== undefined) applyNewsColor('tempVal', newsTemp, vitals.Temp);
+    };
+
+    /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+       NIBP GATE — DOM PROXY
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    window.NIBP_ENTERED = false;
+
+    var acuityCell        = document.getElementById('acuityCell');
+    var acuityVal         = document.getElementById('display-acuity-value');
+    var acuityBadge       = document.getElementById('display-acuity-badge');
+    var nibpPendingAcuity = document.getElementById('nibpPendingAcuity');
+    var nibpPendingCrit   = document.getElementById('nibpPendingCrit');
+    var btnForecast       = document.getElementById('btnForecast');
+
+    acuityVal.textContent = '\u00a0\u00a0\u00a0\u00a0/10';
+
+    function setNibpGateUI(entered) {
+        if (entered) {
+            nibpPendingAcuity.style.display = 'none';
+            nibpPendingCrit.style.display   = 'none';
+            acuityCell.style.opacity        = '';
+            btnForecast.disabled            = false;
+            btnForecast.removeAttribute('aria-disabled');
+            btnForecast.title               = '';
+        } else {
+            nibpPendingAcuity.style.display = '';
+            nibpPendingCrit.style.display   = '';
+            btnForecast.disabled            = true;
+            btnForecast.setAttribute('aria-disabled', 'true');
+            btnForecast.title               = 'Enter NIBP reading to enable forecast';
+        }
+    }
+    setNibpGateUI(false);
+
+    /* ━━ ENTER / START MONITORING ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var entryForm    = document.getElementById('entryForm');
+    var patientBadge = document.getElementById('patientBadge');
+    var lockedZone   = document.getElementById('lockedZone');
+    var btnRefresh   = document.getElementById('btnRefresh');
+    var inpName      = document.getElementById('inpName');
+    var inpAge       = document.getElementById('inpAge');
+    var inpSex       = document.getElementById('inpSex');
+    var btnEnter     = document.getElementById('btnEnter');
+    
+    window.currentETA = 0;
+    window.generatedAmbId = "";
+
+    function clearErrors() {
+        [inpName, inpAge, inpSex].forEach(function (el) { el.classList.remove('error'); });
+    }
+    function validate() {
+        clearErrors();
+        var ok = true;
+        if (!inpName.value.trim())                                     { inpName.classList.add('error'); ok = false; }
+        var a = parseFloat(inpAge.value);
+        if (!inpAge.value.trim() || isNaN(a) || a < 0 || a > 120)      { inpAge.classList.add('error');  ok = false; }
+        if (!inpSex.value)                                             { inpSex.classList.add('error');  ok = false; }
+        return ok;
+    }
+
+    function startMonitoring() {
+        if (!validate()) return;
+
+        var name = inpName.value.trim();
+        var age  = inpAge.value.trim();
+        var sex  = inpSex.value;
+        var pid  = generateId();
+
+        window.generatedAmbId = 'AMB-' + String(Math.floor(Math.random() * 900) + 100);
+        document.getElementById('ambId').textContent = window.generatedAmbId;
+        document.getElementById('topAmbId').textContent = window.generatedAmbId;
+        document.getElementById('topAmbId').style.display = 'flex';
+
+        window.currentETA = Math.floor(Math.random() * (58 - 6 + 1)) + 6;
+        document.querySelector('.eta-value').textContent = window.currentETA + ' Min';
+
+        window.PATIENT = { id: pid, name: name, age: age, sex: sex };
+
+        document.getElementById('ptId').textContent   = pid;
+        document.getElementById('ptName').textContent = name;
+        document.getElementById('ptAge').textContent  = age;
+        document.getElementById('ptSex').textContent  = sex;
+
+        entryForm.style.display      = 'none';
+        patientBadge.style.display   = 'flex';
+        btnRefresh.style.display     = 'flex';
+
+        lockedZone.classList.add('active');
+
+        setNibpGateUI(false);
+
+        var acuity = document.createElement('script');
+        acuity.src = '../../ML/acuity_index/acuity_client.js';
+        document.body.appendChild(acuity);
+
+        var s = document.createElement('script');
+        s.src = 'dashboard.js';
+        document.body.appendChild(s);
+    }
+    
+    setInterval(function() {
+        if (window.PATIENT && window.currentETA > 0) {
+            window.currentETA--;
+            document.querySelector('.eta-value').textContent = window.currentETA + ' Min';
+        }
+    }, 60000);
+
+    btnEnter.addEventListener('click', startMonitoring);
+    [inpName, inpAge, inpSex].forEach(function (el) {
+        el.addEventListener('keydown', function (e) { if (e.key === 'Enter') startMonitoring(); });
+    });
+    [inpName, inpAge].forEach(function (el) {
+        el.addEventListener('input', function () { el.classList.remove('error'); });
+    });
+    inpSex.addEventListener('change', function () { inpSex.classList.remove('error'); });
+
+    /* ━━ REFRESH / RESET ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    btnRefresh.addEventListener('click', function () {
+        if (confirm('Stop monitoring and reset? This will disconnect the current session.')) {
+            window.location.reload();
+        }
+    });
+
+    /* ━━ HOSPITAL NAME ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var hospitalDisplay = document.getElementById('hospitalDisplay');
+    var hospitalInput   = document.getElementById('hospitalInput');
+    var btnEditHospital = document.getElementById('btnEditHospital');
+    var hospitalName    = '';
+
+    function enterEditHospital() {
+        hospitalDisplay.style.display = 'none';
+        btnEditHospital.style.display = 'none';
+        hospitalInput.style.display   = 'block';
+        hospitalInput.value = hospitalName;
+        hospitalInput.focus();
+        hospitalInput.select();
+    }
+
+    function saveHospital() {
+        var v = hospitalInput.value.trim();
+        hospitalName = v || '';
+        hospitalInput.style.display   = 'none';
+        hospitalDisplay.style.display = '';
+        btnEditHospital.style.display = '';
+        if (hospitalName) {
+            hospitalDisplay.textContent = hospitalName;
+            hospitalDisplay.classList.remove('placeholder');
+        } else {
+            hospitalDisplay.textContent = 'Click to set hospital name';
+            hospitalDisplay.classList.add('placeholder');
+        }
+    }
+
+    hospitalDisplay.addEventListener('click',  enterEditHospital);
+    btnEditHospital.addEventListener('click',   enterEditHospital);
+    hospitalInput.addEventListener('blur',      saveHospital);
+    hospitalInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter')  { hospitalInput.blur(); }
+        if (e.key === 'Escape') { hospitalInput.value = hospitalName; hospitalInput.blur(); }
+    });
+
+    /* ━━ NIBP MANUAL ENTRY ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var nibpInput  = document.getElementById('nibpInput');
+    var nibpSave   = document.getElementById('nibpSave');
+    var nibpSaved  = document.getElementById('nibpSaved');
+    var nibpClient = null;
+
+    function getNibpClient() {
+        if (window.mqttClient && window.mqttClient.connected) return window.mqttClient;
+        if (nibpClient && nibpClient.connected) return nibpClient;
+        try { nibpClient = mqtt.connect(MQTT_BROKER); } catch (e) {}
+        return nibpClient;
+    }
+
+    function saveNibp() {
+        var val = nibpInput.value.trim();
+        if (!val) return;
+
+        var colorMap = {
+            'news-green':  '#15803d',
+            'news-yellow': '#ca8a04',
+            'news-orange': '#d97706',
+            'news-red':    '#b91c1c'
+        };
+        var cls = newsSBP(val);
+        if (cls) {
+            nibpInput.style.color       = colorMap[cls] || '';
+            nibpInput.style.borderColor = colorMap[cls] || '';
+        }
+
+        var sbpNum = parseFloat(val);
+        if (!isNaN(sbpNum)) window.LAST_NIBP_SBP = sbpNum;
+
+        var payload = JSON.stringify({
+            patient_id: (window.PATIENT && window.PATIENT.id) || 'unknown',
+            nibp: val, unit: 'mmHg', timestamp: new Date().toISOString()
+        });
+        var client = getNibpClient();
+        if (client) client.publish(TOPIC_NIBP, payload);
+        nibpSaved.style.display = 'block';
+        setTimeout(function () { nibpSaved.style.display = 'none'; }, 2500);
+
+        if (!window.NIBP_ENTERED) {
+            window.NIBP_ENTERED = true;
+            setNibpGateUI(true);
+            
+            var hiddenAcuity = document.getElementById('acuity-value').innerHTML;
+            var hiddenBadge = document.getElementById('acuity-badge').style.background;
+            if(hiddenAcuity) document.getElementById('display-acuity-value').innerHTML = hiddenAcuity;
+            if(hiddenBadge) {
+                document.getElementById('display-acuity-badge').style.background = hiddenBadge;
+                if(hiddenBadge === 'red' || hiddenBadge.includes('185, 28, 28') || hiddenBadge.includes('#b91c1c')) {
+                    document.getElementById('display-acuity-badge').classList.add('blink-red');
+                } else {
+                    document.getElementById('display-acuity-badge').classList.remove('blink-red');
+                }
+            }
+
+            if (window.FORECAST_VITALS) {
+                var enrichedVitals = Object.assign({}, window.FORECAST_VITALS, { SBP: sbpNum });
+                window.runClinicalEngine(enrichedVitals);
+                
+                if (enrichedVitals.HR && enrichedVitals.RR && enrichedVitals.SpO2) {
+                    window.fetchGRURisk(enrichedVitals.HR, enrichedVitals.RR, enrichedVitals.SpO2);
+                }
+            }
+            if (typeof window.onNibpEntered === 'function') window.onNibpEntered(val);
+        } else {
+            if (window.FORECAST_VITALS) {
+                var enrichedV = Object.assign({}, window.FORECAST_VITALS, { SBP: sbpNum });
+                window.runClinicalEngine(enrichedV);
+                
+                if (enrichedV.HR && enrichedV.RR && enrichedV.SpO2) {
+                    window.fetchGRURisk(enrichedV.HR, enrichedV.RR, enrichedV.SpO2);
+                }
+            }
+        }
+    }
+
+    nibpSave.addEventListener('click', saveNibp);
+    nibpInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') saveNibp(); });
+
+    /* ━━ PARAMEDIC NOTES ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var btnSend      = document.getElementById('btnSend');
+    var paramedicMsg = document.getElementById('paramedicMsg');
+    var msgStatus    = document.getElementById('msgStatus');
+    var notesClient  = null;
+    
+    window.SENT_NOTES = [];
+
+    function getNotesClient() {
+        if (window.mqttClient && window.mqttClient.connected) return window.mqttClient;
+        if (notesClient && notesClient.connected) return notesClient;
+        try { notesClient = mqtt.connect(MQTT_BROKER); } catch (e) {}
+        return notesClient;
+    }
+
+    btnSend.addEventListener('click', function () {
+        var msg = paramedicMsg.value.trim();
+        if (!msg) return;
+        
+        var payload = JSON.stringify({
+            patient_id: (window.PATIENT && window.PATIENT.id) || 'unknown',
+            note: msg, timestamp: new Date().toISOString()
+        });
+        
+        window.SENT_NOTES.push("[" + new Date().toLocaleTimeString() + "] " + msg);
+
+        var client = getNotesClient();
+        if (client) client.publish(TOPIC_NOTES, payload);
+        paramedicMsg.value = '';
+        msgStatus.style.display = 'inline';
+        setTimeout(function () { msgStatus.style.display = 'none'; }, 2500);
+    });
+
+    paramedicMsg.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) btnSend.click();
+    });
+
+    /* ━━ GRU RISK ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    var gruRiskBox = document.getElementById('gruRiskBox');
+    window.lastGruKey = ""; 
+
+    window.fetchGRURisk = function (hr, rr, spo2) {
+        var key = hr + "_" + rr + "_" + spo2;
+        if (window.lastGruKey === key) return; 
+        window.lastGruKey = key;
+
+        fetch('http://localhost:8000/gru-risk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ HR: hr, RR: rr, SpO2: spo2 })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (!d.statement) return;
+            gruRiskBox.textContent    = d.statement;
+            gruRiskBox.style.display  = 'block';
+            var alert = d.hr_prob >= 0.5 || d.rr_prob >= 0.5 || d.spo2_prob >= 0.5;
+            gruRiskBox.style.background  = alert ? '#fff5f5' : '#f0fdf4';
+            gruRiskBox.style.borderColor = alert ? '#fecaca' : '#bbf7d0';
+            gruRiskBox.style.color       = alert ? '#b91c1c' : '#15803d';
+        })
+        .catch(function () {});
+    };
+
+    var _gruPatchDone = false;
+
+    /* ── CHANGED: added VITALS_TIMELINE tracking and capture inside onMqttVitals patch ── */
+    window.VITALS_TIMELINE = [];
+    var _lastTimelineCapture = 0;
+
+    function _patchOnMqttVitals() {
+        if (_gruPatchDone) return;
+        if (typeof window.onMqttVitals !== 'function') return;
+        var _orig = window.onMqttVitals;
+        window.onMqttVitals = function (vitals) {
+            _orig(vitals);
+            window.applyNewsColors(vitals);
+            var enriched = Object.assign({}, vitals);
+            if (window.NIBP_ENTERED && window.LAST_NIBP_SBP) enriched.SBP = window.LAST_NIBP_SBP;
+            window.runClinicalEngine(enriched);
+            
+            if (window.NIBP_ENTERED && vitals && vitals.HR && vitals.RR && vitals.SpO2) {
+                window.fetchGRURisk(vitals.HR, vitals.RR, vitals.SpO2);
+            }
+
+            /* ── CHANGED: record vitals snapshot every 5 seconds for timeline ── */
+            var nowMs = Date.now();
+            if (nowMs - _lastTimelineCapture >= 5000) {
+                _lastTimelineCapture = nowMs;
+                var snap = {
+                    t:    new Date().toISOString(),
+                    HR:   vitals.HR   !== undefined ? vitals.HR   : '--',
+                    HRV:  vitals.HRV  !== undefined ? vitals.HRV  : '--',
+                    RR:   vitals.RR   !== undefined ? vitals.RR   : '--',
+                    SpO2: vitals.SpO2 !== undefined ? vitals.SpO2 : '--',
+                    Temp: vitals.Temp !== undefined ? vitals.Temp : '--',
+                    NIBP: (!isNaN(window.LAST_NIBP_SBP) && window.LAST_NIBP_SBP) ? window.LAST_NIBP_SBP : '--'
+                };
+                window.VITALS_TIMELINE.push(snap);
+                /* keep last 500 entries (~41 minutes at 5-second intervals) */
+                if (window.VITALS_TIMELINE.length > 500) {
+                    window.VITALS_TIMELINE = window.VITALS_TIMELINE.slice(-500);
+                }
+                /* write to em_vitals_timeline so standalone epcr.html can read it */
+                try { localStorage.setItem('em_vitals_timeline', JSON.stringify(window.VITALS_TIMELINE)); } catch(e) {}
+            }
+        };
+        _gruPatchDone = true;
+    }
+    
+    var _gruPatchInterval = setInterval(function () {
+        _patchOnMqttVitals();
+        
+        if (window.NIBP_ENTERED) {
+            var hiddenAcuity = document.getElementById('acuity-value').innerHTML;
+            var hiddenBadge = document.getElementById('acuity-badge').style.background;
+            
+            if (hiddenAcuity) document.getElementById('display-acuity-value').innerHTML = hiddenAcuity;
+            if (hiddenBadge) {
+                document.getElementById('display-acuity-badge').style.background = hiddenBadge;
+                if(hiddenBadge === 'red' || hiddenBadge.includes('185, 28, 28') || hiddenBadge.includes('#b91c1c')) {
+                    document.getElementById('display-acuity-badge').classList.add('blink-red');
+                } else {
+                    document.getElementById('display-acuity-badge').classList.remove('blink-red');
+                }
+            }
+        }
+        
+        if (_gruPatchDone) clearInterval(_gruPatchInterval);
+    }, 200);
+
+    window.LAST_NIBP_SBP = NaN;
+
+    /* ━━ VIEW FORECAST ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+    if (btnForecast) {
+        btnForecast.addEventListener('click', function (e) {
+            if (!window.NIBP_ENTERED) {
+                e.preventDefault();
+                alert('Please enter a NIBP reading first to enable the forecast.');
+                return;
+            }
+            var vitals  = window.FORECAST_VITALS;
+            var patient = window.PATIENT;
+            if (!vitals) {
+                alert('No vitals data yet \u2014 wait for an MQTT packet.');
+                return;
+            }
+            var vb64 = btoa(JSON.stringify(vitals));
+            var pb64 = patient ? btoa(JSON.stringify(patient)) : '';
+            var url  = 'forecast.html?v=' + encodeURIComponent(vb64)
+                     + (pb64 ? '&p=' + encodeURIComponent(pb64) : '');
+            window.open(url, '_blank', 'width=1100,height=800');
+        });
+    }
+
+}());
+</script>
+
+<script>
+    setInterval(function() {
+        var triageRaw = localStorage.getItem('em_triage_sync');
+        if (triageRaw) {
+            try {
+                var t = JSON.parse(triageRaw);
+                var tStatus = document.getElementById('triageStatus');
+                var tPrio = document.getElementById('triagePriority');
+                
+                if(tStatus) { tStatus.innerText = t.status; tStatus.style.color = 'var(--green)'; }
+                if(tPrio) { tPrio.innerText = t.priority; tPrio.style.color = t.priorityColor || 'var(--text)'; }
+                
+                if(document.getElementById('t-paramedic')) document.getElementById('t-paramedic').innerText = t.paramedic;
+                if(document.getElementById('t-doctor')) document.getElementById('t-doctor').innerText = t.doctor;
+                if(document.getElementById('t-nurse')) document.getElementById('t-nurse').innerText = t.nurse;
+                if(document.getElementById('t-ward-bed')) document.getElementById('t-ward-bed').innerText = t.ward + ' / ' + t.bed;
+                if(document.getElementById('t-facility')) document.getElementById('t-facility').innerText = t.facility;
+            } catch(e) {}
+        }
+    }, 500);
+</script>
+
+<script>
+    /* ── CHANGED: added epcr.vitalsTimeline to the sync payload so the dashboard
+       ePCR modal can render the full vitals timeline without any extra setup ── */
+    setInterval(function() {
+        var typing = document.getElementById('paramedicMsg') ? document.getElementById('paramedicMsg').value : '';
+        var allNotes = (window.SENT_NOTES && window.SENT_NOTES.length > 0) ? window.SENT_NOTES.join('\n\n') : '';
+        if(typing.trim() !== '') {
+            allNotes += (allNotes !== '' ? '\n\n' : '') + "[Currently Typing...] " + typing;
+        }
+
+        var syncData = {
+            patient: window.PATIENT || null,
+            ambId: window.generatedAmbId || '--',
+            eta: document.querySelector('.eta-value') ? document.querySelector('.eta-value').innerText : '-- Min',
+            hospitalName: document.getElementById('hospitalDisplay') ? document.getElementById('hospitalDisplay').innerText : 'Click to set hospital name',
+            vitals: {
+                hr:   document.getElementById('hrVal')   ? document.getElementById('hrVal').innerText   : '--',
+                hrv:  document.getElementById('hrvVal')  ? document.getElementById('hrvVal').innerText  : '--',
+                rr:   document.getElementById('rrVal')   ? document.getElementById('rrVal').innerText   : '--',
+                spo2: document.getElementById('spo2Val') ? document.getElementById('spo2Val').innerText : '--',
+                temp: document.getElementById('tempVal') ? document.getElementById('tempVal').innerText : '--',
+                nibp: document.getElementById('nibpInput') ? document.getElementById('nibpInput').value : '--'
+            },
+            clinical: {
+                acuity:       document.getElementById('display-acuity-value') ? document.getElementById('display-acuity-value').innerText : '',
+                acuityColor:  document.getElementById('display-acuity-badge') ? document.getElementById('display-acuity-badge').style.background : '',
+                profile:      document.getElementById('clinicalProfileName') ? document.getElementById('clinicalProfileName').innerText : '',
+                gruRisk:      document.getElementById('gruRiskBox') ? document.getElementById('gruRiskBox').innerText : '',
+                conditionsHTML: document.getElementById('conditionsBox') ? document.getElementById('conditionsBox').innerHTML : ''
+            },
+            /* ── CHANGED: embed vitals timeline so the emergency dashboard ePCR
+               modal can render Section 2 (Vital Signs Timeline) without any
+               extra localStorage key or additional sync mechanism ── */
+            epcr: {
+                vitalsTimeline: window.VITALS_TIMELINE || []
+            },
+            col4: {
+                instructionsHTML: document.getElementById('preArrivalScroll') ? document.getElementById('preArrivalScroll').innerHTML : '',
+                progressText:     document.getElementById('checklistProgress') ? document.getElementById('checklistProgress').innerText : '',
+                notes: allNotes
+            }
+        };
+        localStorage.setItem('em_dash_sync', JSON.stringify(syncData));
+    }, 500);
+</script>
+</body>
+</html>
